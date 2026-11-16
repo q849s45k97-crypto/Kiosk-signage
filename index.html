@@ -316,7 +316,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 (()=>{
 "use strict";
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION='1.6.0';
+const APP_VERSION='1.6.1';
 const isIOS=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const DAYS=['日','月','火','水','木','金','土'];
@@ -402,7 +402,7 @@ function nextItem(dir=1){
 function makeLayer(it){
   const L=document.createElement('div');L.className='layer t-'+S.trans;L.style.transitionDuration=S.transMs+'ms';L.style.setProperty('--fit',S.fit);
   if(it.type==='image'){const im=new Image();im.src=urls[it.mediaId];im.alt='';im.draggable=false;L.appendChild(im);}
-  else if(it.type==='video'){const v=document.createElement('video');v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.disablePictureInPicture=true;v.muted=!it.sound;if(!it.sound)v.setAttribute('muted','');v.playsInline=true;v.preload='auto';v.src=urls[it.mediaId];L.appendChild(v);}
+  else if(it.type==='video'){const v=takeVideo();v.muted=!it.sound;if(it.sound)v.removeAttribute('muted');else v.setAttribute('muted','');v.src=urls[it.mediaId];L.appendChild(v);}
   else if(it.type==='text'){const d=document.createElement('div');d.className='txt'+(it.align==='center'?' center':'');d.style.background=it.bg||'#000';d.style.color=it.fg||'#fff';
     if(it.tag){const t=document.createElement('div');t.className='tag';t.textContent=it.tag;d.appendChild(t);}
     const h=document.createElement('h1');h.textContent=it.title||'';d.appendChild(h);
@@ -418,16 +418,20 @@ function show(it){
   cur=it;applyOverlays();
   const go=()=>{
     void L.offsetWidth;L.classList.add('show');
-    old.forEach(o=>{o.classList.remove('show');if(S.trans==='slide')o.classList.add(navDir<0?'outr':'out');const v=o.querySelector('video');setTimeout(()=>{if(v){v.pause();v.removeAttribute('src');v.load();}o.remove();},S.transMs+80);});
+    old.forEach(o=>{o.classList.remove('show');if(S.trans==='slide')o.classList.add(navDir<0?'outr':'out');const v=o.querySelector('video');setTimeout(()=>{if(v&&v.parentNode===o){v.pause();v.removeAttribute('src');v.load();}o.remove();},S.transMs+80);});
   };
   if(it.type==='video'){
-    const v=L.querySelector('video');let done=false;
-    const fail=()=>{if(done)return;done=true;log('動画を再生できません: '+it.name);L.remove();schedule(0.5);};
+    const v=L.querySelector('video'),tk=v._tk;let done=false;
+    const mine=()=>v._tk===tk&&cur===it;           // 使い回し後の古いイベントを無視
+    const fail=()=>{if(done||!mine())return;done=true;log('動画を再生できません: '+it.name);L.remove();schedule(0.5);};
     v.onerror=fail;
-    v.onloadeddata=()=>{if(done)return;go();v.play().catch(()=>{v.muted=true;v.play().catch(fail);});
+    v.onloadeddata=()=>{if(done||!mine())return;go();
+      v.play().catch(()=>{if(!mine())return;
+        if(!v.muted){log('音声の再生が許可されませんでした（画面をタップすると音が出ます）: '+it.name);v.muted=true;toast('音声付き動画：画面を一度タップすると音が出ます',4000);}
+        v.play().catch(fail);});
       const d=it.dur>0?it.dur:(isFinite(v.duration)&&v.duration>0?v.duration:S.dur);schedule(d);};
-    if(!it.dur)v.onended=()=>{if(!paused)advance(1);};
-    setTimeout(()=>{if(!v.readyState)fail();},10000);
+    v.onended=it.dur?null:()=>{if(mine()&&!paused)advance(1);};
+    setTimeout(()=>{if(mine()&&!v.readyState)fail();},10000);
   }else if(it.type==='image'){
     const im=L.querySelector('img');
     const ok=()=>{go();schedule(it.dur||S.dur)};
@@ -436,6 +440,20 @@ function show(it){
   log('再生: '+it.name);markCurrent();
 }
 function schedule(sec){clearTimeout(timer);curDur=sec*1000;remain=curDur;startedAt=performance.now();if(!paused)timer=setTimeout(()=>advance(1),remain);}
+/* iPad(Safari)は「タップ中に再生を始めた<video>」にしか音声を許可しないため、
+   タップ時に2つの<video>を許可済みにしておき、以後はそれを交互に使い回す */
+const vpool=[0,1].map(()=>{const v=document.createElement('video');v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.playsInline=true;v.disablePictureInPicture=true;v.preload='auto';v._tk=0;return v;});
+let vpi=0,audioOK=0;
+function takeVideo(){const v=vpool[vpi];vpi^=1;v.pause();v.onloadeddata=v.onerror=v.onended=null;v._tk++;return v;}
+function unlockAudio(){
+  if(audioOK>=vpool.length)return;
+  const src=$('#nosleep').getAttribute('src');
+  vpool.forEach(v=>{if(v._ok||v.isConnected)return;const tk=v._tk;v.muted=false;v.src=src;const p=v.play();
+    if(p&&p.then)p.then(()=>{if(v._tk===tk&&!v.isConnected){v.pause();v.removeAttribute('src');v.load();}if(!v._ok){v._ok=1;audioOK++;if(audioOK===vpool.length)log('音声の再生を許可しました');}}).catch(()=>{});});
+  // 再生中の音声付き動画がミュートにされていたら戻す
+  const cv=stage.querySelector('.layer.show video');if(cv&&cur&&cur.sound&&cv.muted){cv.muted=false;cv.play().catch(()=>{cv.muted=true;});}
+}
+['pointerdown','touchend','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true,capture:true}));
 let navDir=1;
 function advance(dir){navDir=dir;
   if(!inHours()){sleep();return;}
