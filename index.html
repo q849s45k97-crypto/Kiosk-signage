@@ -27,8 +27,12 @@ body.hide-cursor,body.hide-cursor *{cursor:none!important}
 .layer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition-property:opacity,transform;transition-timing-function:ease-in-out}
 .layer.show{opacity:1;transform:none}
 .layer.t-slide{transform:translateX(100%);opacity:1}
+.layer.t-slide.rev{transform:translateX(-100%)}
+.layer.t-slide.show{transform:none}
 .layer.t-slide.out{transform:translateX(-100%)}
+.layer.t-slide.outr{transform:translateX(100%)}
 .layer.t-zoom{transform:scale(1.08)}
+.layer.t-zoom.show{transform:none}
 .layer.t-none{transition:none!important}
 .layer img,.layer video{width:100%;height:100%;object-fit:var(--fit,contain);background:#000}
 .layer iframe{width:100%;height:100%;border:0;background:#fff}
@@ -260,6 +264,10 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
         <label>管理画面のPIN</label><input type="password" id="kPin" inputmode="numeric" placeholder="空欄でPINなし" autocomplete="new-password">
         <label>カーソル自動非表示</label><select id="kCursor"><option value="1">オン（3秒）</option><option value="0">オフ</option></select>
         <label>画面スリープ防止</label><select id="kWake"><option value="1">オン</option><option value="0">オフ</option></select>
+
+        <div class="sec">TOUCH</div>
+        <label>タッチで切り替え</label><select id="kTouch"><option value="2">スワイプ＋タップ</option><option value="1">スワイプのみ</option><option value="0">オフ</option></select>
+        <div></div><div style="font-size:12px;color:var(--mut)">左へスワイプ／右端タップで次へ、右へスワイプ／左端タップで前へ。</div>
       </div>
     </div>
 
@@ -298,7 +306,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 (()=>{
 "use strict";
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION='1.4.1';
+const APP_VERSION='1.5.0';
 const isIOS=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const DAYS=['日','月','火','水','木','金','土'];
@@ -344,7 +352,7 @@ const blobDel=k=>db?tx('blobs','readwrite',s=>s.delete(k)):(delete mem.blobs[k],
 /* ---------- state ---------- */
 const DEFAULT_SETTINGS={trans:'fade',transMs:900,dur:8,fit:'contain',shuffle:0,progress:1,layout:null,
   tickText:'ようこそ ｜ 本日の営業時間 10:00〜20:00 ｜ 管理画面は左上を3回タップ',tickDur:14,tickBg:'#111418',tickFg:'#ffffff',
-  autostart:0,reload:'',hours:0,on:'09:00',off:'21:00',pin:'',cursor:1,wake:1};
+  autostart:0,reload:'',hours:0,on:'09:00',off:'21:00',pin:'',cursor:1,wake:1,touch:2};
 let S={...DEFAULT_SETTINGS};
 let items=[];             // {id,type:'image'|'video'|'text'|'url',name,dur,enabled,days:[0..6],start,end, mediaId, title,body,tag,bg,fg,align, url}
 const urls={};            // mediaId -> objectURL
@@ -396,11 +404,11 @@ function show(it){
   clearTimeout(timer);
   $('#empty').hidden=true;
   const old=[...stage.querySelectorAll('.layer')];
-  const L=makeLayer(it);stage.appendChild(L);
+  const L=makeLayer(it);if(navDir<0)L.classList.add('rev');stage.appendChild(L);
   cur=it;applyOverlays();
   const go=()=>{
     void L.offsetWidth;L.classList.add('show');
-    old.forEach(o=>{o.classList.remove('show');if(S.trans==='slide')o.classList.add('out');const v=o.querySelector('video');setTimeout(()=>{if(v){v.pause();v.removeAttribute('src');v.load();}o.remove();},S.transMs+80);});
+    old.forEach(o=>{o.classList.remove('show');if(S.trans==='slide')o.classList.add(navDir<0?'outr':'out');const v=o.querySelector('video');setTimeout(()=>{if(v){v.pause();v.removeAttribute('src');v.load();}o.remove();},S.transMs+80);});
   };
   if(it.type==='video'){
     const v=L.querySelector('video');let done=false;
@@ -418,7 +426,8 @@ function show(it){
   log('再生: '+it.name);markCurrent();
 }
 function schedule(sec){clearTimeout(timer);curDur=sec*1000;remain=curDur;startedAt=performance.now();if(!paused)timer=setTimeout(()=>advance(1),remain);}
-function advance(dir){
+let navDir=1;
+function advance(dir){navDir=dir;
   if(!inHours()){sleep();return;}
   const it=nextItem(dir);
   if(!it){clear();timer=setTimeout(()=>advance(1),15000);return;}
@@ -542,6 +551,18 @@ setInterval(()=>{
 },20000);
 // watchdog: if timer was lost (e.g. tab throttled), recover
 setInterval(()=>{if(playing&&!paused&&!sleeping&&cur&&curDur&&performance.now()-startedAt>curDur+15000){log('ウォッチドッグ: 再生を復旧');advance(1);}},10000);
+
+/* ---------- touch navigation (swipe / tap) ---------- */
+let tp=null;
+const blocked=()=>!playing||sleeping||!S.touch||$('#admin').classList.contains('on')||$('#modal').classList.contains('on')||$('#pin').classList.contains('on')||$('#boot').style.display!=='none';
+document.addEventListener('pointerdown',e=>{if(blocked()||e.target.closest('#hotspot')||!e.isPrimary){tp=null;return;}tp={x:e.clientX,y:e.clientY,t:performance.now()};},{passive:true});
+document.addEventListener('pointercancel',()=>{tp=null;},{passive:true});
+document.addEventListener('pointerup',e=>{
+  if(!tp||blocked())return;const dx=e.clientX-tp.x,dy=e.clientY-tp.y,dt=performance.now()-tp.t;tp=null;
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5&&dt<900){advance(dx<0?1:-1);return;}  // スワイプ
+  if(S.touch>=2&&Math.hypot(dx,dy)<12&&dt<500){const w=window.innerWidth;                   // タップ
+    if(e.clientX>w*2/3)advance(1);else if(e.clientX<w/3)advance(-1);}
+},{passive:true});
 
 /* ---------- layout editor ---------- */
 let selW=null;const frame=$('#frame');
@@ -802,7 +823,7 @@ function editItem(it,isNew){
 
 /* ---------- admin: settings ---------- */
 const bind=[['#sTrans','trans'],['#sTransMs','transMs',1],['#sDur','dur',1],['#sFit','fit'],['#sShuffle','shuffle',1],['#sProg','progress',1],['#sTickText','tickText'],['#sTickDur','tickDur',1],['#sTickBg','tickBg'],['#sTickFg','tickFg'],
-  ['#kAuto','autostart',1],['#kReload','reload'],['#kHours','hours',1],['#kOn','on'],['#kOff','off'],['#kPin','pin'],['#kCursor','cursor',1],['#kWake','wake',1]];
+  ['#kAuto','autostart',1],['#kReload','reload'],['#kHours','hours',1],['#kOn','on'],['#kOff','off'],['#kPin','pin'],['#kCursor','cursor',1],['#kWake','wake',1],['#kTouch','touch',1]];
 function renderSettings(){bind.forEach(([sel,k])=>{$(sel).value=S[k];});}
 bind.forEach(([sel,k,num])=>{const el=$(sel);el.addEventListener(el.tagName==='SELECT'||el.type==='color'||el.type==='time'?'change':'input',()=>{
   let v=el.value;if(num){v=Number(v);if(!isFinite(v))return;if(k==='dur'&&v<1)return;if(k==='tickDur'&&v<5)return;}
