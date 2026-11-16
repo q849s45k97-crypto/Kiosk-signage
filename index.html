@@ -298,7 +298,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 (()=>{
 "use strict";
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION='1.4.0';
+const APP_VERSION='1.4.1';
 const isIOS=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const DAYS=['日','月','火','水','木','金','土'];
@@ -317,8 +317,28 @@ function openDB(){return new Promise(res=>{try{const r=indexedDB.open('kiosk-sig
 function tx(store,mode,fn){return new Promise((res,rej)=>{if(!db){res(fn(null));return;}try{const t=db.transaction(store,mode);const s=t.objectStore(store);const r=fn(s);t.oncomplete=()=>res(r&&r.result!==undefined?r.result:undefined);t.onerror=()=>rej(t.error);}catch(e){rej(e)}});}
 const kvGet=k=>db?tx('kv','readonly',s=>s.get(k)):Promise.resolve(mem.kv[k]);
 const kvSet=(k,v)=>db?tx('kv','readwrite',s=>s.put(v,k)):(mem.kv[k]=v,Promise.resolve());
-const blobGet=k=>db?tx('blobs','readonly',s=>s.get(k)):Promise.resolve(mem.blobs[k]);
-const blobSet=(k,v)=>db?tx('blobs','readwrite',s=>s.put(v,k)):(mem.blobs[k]=v,Promise.resolve());
+// iPad(Safari) は File/Blob を IndexedDB にそのまま保存すると失敗・破損することがあるため、
+// 中身を ArrayBuffer にして {buf,type,name} で保存し、読み出し時に Blob に戻す。
+const toRec=async v=>({buf:await v.arrayBuffer(),type:v.type||'',name:v.name||''});
+const fromRec=r=>r.name?new File([r.buf],r.name,{type:r.type}):new Blob([r.buf],{type:r.type});
+const putRaw=(k,v)=>tx('blobs','readwrite',s=>s.put(v,k));
+async function blobSet(k,v){
+  if(!db){mem.blobs[k]=v;return;}
+  let rec;try{rec=await toRec(v);}catch(e){throw new Error('ファイルを読み込めません（'+(e.name||e.message)+'）');}
+  if(!rec.buf.byteLength&&v.size)throw new Error('ファイルの中身が空です');
+  try{await putRaw(k,rec);}catch(e){throw new Error((e&&e.name==='QuotaExceededError')?'容量不足':((e&&(e.name||e.message))||'保存エラー'));}
+}
+async function blobGet(k){
+  if(!db)return mem.blobs[k];
+  const r=await tx('blobs','readonly',s=>s.get(k));
+  if(!r)return r;
+  if(r.buf)return fromRec(r);
+  if(r instanceof Blob){ // 旧形式：読めれば新形式に移行、読めなければ欠落扱い
+    try{const rec=await toRec(r);if(!rec.buf.byteLength&&r.size)throw 0;await putRaw(k,rec).catch(()=>{});return fromRec(rec);}
+    catch(e){log('保存データが壊れています（再登録が必要）: '+k);return null;}
+  }
+  return null;
+}
 const blobDel=k=>db?tx('blobs','readwrite',s=>s.delete(k)):(delete mem.blobs[k],Promise.resolve());
 
 /* ---------- state ---------- */
@@ -709,8 +729,8 @@ async function addFiles(files){
     const type=f.type.startsWith('video/')?'video':f.type.startsWith('image/')?'image':null;
     if(!type){toast('対応していない形式: '+f.name);continue;}
     const mid=uid();
-    try{await blobSet(mid,f);}catch(e){log('保存失敗（容量不足の可能性）: '+f.name);toast('保存できませんでした: '+f.name);continue;}
-    urls[mid]=URL.createObjectURL(f);
+    try{await blobSet(mid,f);}catch(e){log('保存失敗: '+f.name+' / '+e.message);toast(`保存できませんでした: ${f.name}（${e.message}）`,5000);continue;}
+    urls[mid]=URL.createObjectURL(await blobGet(mid)||f);
     items.push({id:uid(),type,name:f.name.replace(/\.[^.]+$/,''),dur:type==='video'?0:S.dur,enabled:true,days:[0,1,2,3,4,5,6],start:'',end:'',mediaId:mid,sound:false});n++;
   }
   if(n){save();renderItems();toast(`${n}件追加しました`);log(`${n}件のメディアを追加`);if(playing&&!cur&&!sleeping)advance(1);}
