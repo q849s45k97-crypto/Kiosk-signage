@@ -38,13 +38,40 @@ body.hide-cursor,body.hide-cursor *{cursor:none!important}
 .txt.center{align-items:center;text-align:center}
 .txt .tag{font-family:var(--mono);font-size:clamp(12px,1.2vw,22px);letter-spacing:.2em;text-transform:uppercase;opacity:.7}
 
-/* ===== Overlays ===== */
-#clock{position:fixed;top:calc(2.4vh + var(--sat));right:calc(2.4vw + var(--sar));font-family:var(--mono);font-size:clamp(14px,1.8vw,34px);padding:.35em .7em;border-radius:.4em;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);z-index:5;text-align:right;line-height:1.2}
-#clock small{display:block;font-size:.5em;opacity:.75;letter-spacing:.08em}
-#ticker{position:fixed;left:0;right:0;bottom:0;height:calc(clamp(36px,5.5vh,80px) + var(--sab));padding-bottom:var(--sab);background:var(--tickbg,#111);color:var(--tickfg,#fff);z-index:5;overflow:hidden;display:flex;align-items:center;font-size:clamp(16px,2.4vh,38px);font-weight:700}
-#ticker span{white-space:nowrap;padding-left:100%;display:inline-block;animation:tick var(--tickdur,30s) linear infinite}
-@keyframes tick{to{transform:translateX(-100%)}}
-#progress{position:fixed;left:0;top:0;height:3px;background:var(--acc);z-index:6;width:0}
+/* ===== Widgets (layout) ===== */
+#stage{right:auto;bottom:auto}
+#widgets{position:fixed;inset:0;z-index:5;pointer-events:none}
+#widgets.off{display:none}
+.wg{position:absolute;container-type:size;overflow:hidden;display:flex;align-items:center;transition:opacity .4s}
+.wg.hid{opacity:0}
+.chk{display:flex;gap:6px 14px;flex-wrap:wrap}.chk label{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--fg)}.chk input{width:20px;height:20px}
+.wg-clock{flex-direction:column;justify-content:center;font-family:var(--mono);line-height:1.1;text-align:center}
+.wg-clock b{font-weight:500;font-size:min(52cqh,26cqw)}
+.wg-clock small{font-size:min(22cqh,11cqw);opacity:.75;letter-spacing:.06em}
+.wg-ticker{font-weight:700}
+.wg-ticker .trk{display:flex;white-space:nowrap;will-change:transform;transform:translate3d(0,0,0);-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.wg-ticker .trk span{font-size:56cqh;padding-right:3em;flex:none}
+.wg-text>div{padding:3cqh 4cqw;white-space:pre-wrap;line-height:1.3;width:100%}
+.wg-image img{width:100%;height:100%}
+#progress{position:absolute;left:0;top:0;height:3px;width:100%;background:var(--acc);z-index:3;transform-origin:0 0;transform:scaleX(0);will-change:transform}
+/* layout editor */
+.lay{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;align-items:start}
+.lay-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.frame{position:relative;width:100%;aspect-ratio:var(--ar,4/3);background:#05070a;border:3px solid #3a414c;border-radius:10px;overflow:hidden;
+  background-image:linear-gradient(#ffffff0d 1px,transparent 1px),linear-gradient(90deg,#ffffff0d 1px,transparent 1px);background-size:10% 10%}
+.lw{position:absolute;border:2px solid var(--c);background:color-mix(in srgb,var(--c) 22%,transparent);color:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;touch-action:none;cursor:move;overflow:hidden;text-align:center;padding:2px;line-height:1.2;user-select:none;-webkit-user-select:none}
+.lw.sel{box-shadow:0 0 0 2px #fff;z-index:50}
+.lw .hd{position:absolute;right:0;bottom:0;width:26px;height:26px;background:var(--c);border-radius:6px 0 3px 0;cursor:nwse-resize;touch-action:none}
+.lw .hd::after{content:"";position:absolute;right:6px;bottom:6px;width:9px;height:9px;border-right:2px solid #000;border-bottom:2px solid #000}
+.lw img{max-width:100%;max-height:100%;pointer-events:none}
+.lay-props{background:#0f1216;border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.lay-props h4{font-size:14px}
+.lay-props .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.lay-props .g4 label{font-size:11px;color:var(--mut);display:flex;flex-direction:column;gap:3px}
+.lay-props .g4 input{padding:6px;font-size:15px}
+.lay-props>label{font-size:12px;color:var(--mut);display:flex;flex-direction:column;gap:4px}
+@media (max-width:900px){.lay{grid-template-columns:1fr}}
 #hotspot{position:fixed;top:0;left:0;width:calc(120px + var(--sal));height:calc(120px + var(--sat));z-index:30;touch-action:none}
 #hotspot .ring{position:absolute;left:calc(22px + var(--sal));top:calc(22px + var(--sat));width:56px;height:56px;border-radius:50%;border:3px solid var(--acc);opacity:0;transform:scale(.6);transition:opacity .2s,transform .2s}
 #hotspot.press .ring{opacity:.9;transform:scale(1);transition:opacity .2s,transform 1.6s linear}
@@ -95,7 +122,7 @@ kbd{font-family:var(--mono);background:#1b1f26;border:1px solid var(--line);bord
 .form{display:grid;grid-template-columns:160px 1fr;gap:12px 16px;align-items:center;max-width:720px}
 .form label{font-size:13px;color:var(--mut)}
 input,textarea{-webkit-user-select:text;user-select:text}
-input[type=text],input[type=number],input[type=time],input[type=password],input[type=url],select,textarea{font:inherit;font-size:14px;background:#0f1216;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;font-size:16px}
+input[type=datetime-local],input[type=text],input[type=number],input[type=time],input[type=password],input[type=url],select,textarea{font:inherit;font-size:14px;background:#0f1216;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;font-size:16px}
 textarea{min-height:90px;resize:vertical}
 input[type=color]{width:48px;height:34px;border:1px solid var(--line);border-radius:8px;background:#0f1216;padding:2px}
 .days{display:flex;gap:4px;flex-wrap:wrap}
@@ -114,7 +141,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 #modal{position:fixed;inset:0;z-index:96;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:16px}
 #modal.on{display:flex}
 .mbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:min(620px,100%);max-height:92vh;overflow:auto;padding:20px}
-.mbox h3{font-size:16px;margin-bottom:14px}
+.mbox h3{font-size:16px;margin-bottom:14px;white-space:pre-line;line-height:1.6}
 .mbox .form{grid-template-columns:120px 1fr}
 .mbox footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 #pin{position:fixed;inset:0;z-index:97;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center}
@@ -125,10 +152,8 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 </style>
 </head>
 <body>
-<div id="stage"><div id="empty" hidden><div style="font-size:42px">▢</div>再生できる項目がありません<br><small>左上の角を長押し（2秒）して管理画面から追加してください</small></div></div>
-<div id="progress"></div>
-<div id="clock" hidden></div>
-<div id="ticker" hidden><span></span></div>
+<div id="stage"><div id="progress"></div><div id="empty" hidden><div style="font-size:42px">▢</div>再生できる項目がありません<br><small>左上の角を長押し（2秒）して管理画面から追加してください</small></div></div>
+<div id="widgets" class="off"></div>
 <div id="hotspot"><div class="ring"></div></div>
 <video id="nosleep" src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMvbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAll0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHRbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABfG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAATxzdGJsAAAAvHN0c2QAAAAAAAAAAQAAAKxhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAAMmF2Y0MBZAAK/+EAF2dkAAqs2V7ARAAAAwAEAAADAAg8SJZYAQAEaO+Py/34+AAAAAAQcGFzcAAAAAEAAAABAAAAFGJ0cnQAAAAAAAALQAAAC0AAAAAYc3R0cwAAAAAAAAABAAAAAgAAQAAAAAAUc3RzcwAAAAAAAAABAAAAAQAAABxzdHNjAAAAAAAAAAEAAAABAAAAAgAAAAEAAAAcc3RzegAAAAAAAAAAAAAAAgAAAsQAAAAMAAAAFHN0Y28AAAAAAAAAAQAAA18AAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAAC2G1kYXQAAAKqBgX//6bcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MSByZWY9MSBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgzOjB4MyBtZT1oZXggc3VibWU9MiBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0wIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MCA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0wIHRocmVhZHM9MSBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTMgYl9weXJhbWlkPTIgYl9hZGFwdD0xIGJfYmlhcz0wIGRpcmVjdD0xIHdlaWdodGI9MSBvcGVuX2dvcD0wIHdlaWdodHA9MSBrZXlpbnQ9MjUwIGtleWludF9taW49MSBzY2VuZWN1dD00MCBpbnRyYV9yZWZyZXNoPTAgcmNfbG9va2FoZWFkPTEwIHJjPWNyZiBtYnRyZWU9MSBjcmY9MjMuMCBxY29tcD0wLjYwIHFwbWluPTAgcXBtYXg9NjkgcXBzdGVwPTQgaXBfcmF0aW89MS40MCBhcT0xOjEuMDAAgAAAABJliIQAFv/sf8JVf9ECkR5tf/EAAAAIQZohGIK//vA=" muted playsinline webkit-playsinline loop preload="auto"></video>
 <div id="toast"></div>
@@ -164,6 +189,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
     </header>
     <div class="tabs">
       <button data-tab="pl" class="on">プレイリスト</button>
+      <button data-tab="lay">レイアウト</button>
       <button data-tab="disp">表示・オーバーレイ</button>
       <button data-tab="kiosk">キオスク設定</button>
       <button data-tab="data">データ・状態</button>
@@ -180,6 +206,25 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
       <div class="items" id="items"></div>
     </div>
 
+    <div class="pane" id="tab-lay">
+      <div class="lay-tools">
+        <button class="sm" data-add="clock">＋ 時計</button>
+        <button class="sm" data-add="ticker">＋ テロップ</button>
+        <button class="sm" data-add="text">＋ テキスト</button>
+        <button class="sm" data-add="image">＋ 画像・ロゴ</button>
+        <span style="flex:1"></span>
+        <button class="sm" data-preset="full">全画面</button>
+        <button class="sm" data-preset="bottom">下テロップ</button>
+        <button class="sm" data-preset="L">L字</button>
+        <input type="file" id="wImgIn" accept="image/*" hidden>
+      </div>
+      <div class="lay">
+        <div><div class="frame" id="frame"></div>
+          <div style="font-size:12px;color:var(--mut);margin-top:8px">枠をドラッグで移動、右下の角でサイズ変更。端や他の枠に吸着します。変更はすぐ画面に反映されます。</div></div>
+        <div class="lay-props" id="lprops"></div>
+      </div>
+    </div>
+
     <div class="pane" id="tab-disp">
       <div class="form">
         <div class="sec">TRANSITION</div>
@@ -192,13 +237,10 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
         <label>シャッフル再生</label><select id="sShuffle"><option value="0">オフ</option><option value="1">オン</option></select>
         <label>進行バー</label><select id="sProg"><option value="0">非表示</option><option value="1">表示</option></select>
 
-        <div class="sec">CLOCK</div>
-        <label>時計を表示</label><select id="sClock"><option value="0">オフ</option><option value="1">オン</option></select>
-
         <div class="sec">TICKER</div>
-        <label>テロップを表示</label><select id="sTick"><option value="0">オフ</option><option value="1">オン</option></select>
+        <div></div><div style="font-size:12px;color:var(--mut)">時計・テロップの表示／位置は「レイアウト」タブで設定します。</div>
         <label>テロップ文</label><input type="text" id="sTickText">
-        <label>速さ（1周の秒数）</label><input type="number" id="sTickDur" min="5" max="300">
+        <label>速さ（画面を横切る秒数）</label><input type="number" id="sTickDur" min="5" max="300">
         <label>色（背景 / 文字）</label><div class="row"><input type="color" id="sTickBg"><input type="color" id="sTickFg"></div>
       </div>
     </div>
@@ -223,6 +265,17 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 
     <div class="pane" id="tab-data">
       <div class="stat" id="stats"></div>
+      <div class="sec" style="margin-top:0">PACKAGE（画像・動画込み）</div>
+      <div style="font-size:13px;color:var(--mut);line-height:1.7;margin-bottom:10px">プレイリスト・レイアウト・設定と、使っている画像・動画の元ファイルを1つのファイル（.signage）にまとめます。別の iPad で読み込むとすぐに同じ内容で再生できます。AirDrop や「ファイル」アプリで受け渡しできます（PINは含みません）。</div>
+      <div class="row" style="margin-bottom:8px">
+        <button class="pri" id="pBuild">まとめて書き出す</button>
+        <button id="pShare" hidden>共有・AirDrop</button>
+        <button id="pSave" hidden>ファイルとして保存</button>
+        <button id="pImport">まとめファイルを読み込む</button>
+        <input type="file" id="pIn" hidden>
+      </div>
+      <div id="pInfo" style="font-size:13px;color:var(--acc);min-height:20px;margin-bottom:18px"></div>
+      <div class="sec">SETTINGS ONLY / TOOLS</div>
       <div class="row" style="margin-bottom:14px">
         <button id="dCopy">設定をJSONでコピー</button>
         <button id="dExport">設定をファイルに保存</button>
@@ -245,7 +298,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 (()=>{
 "use strict";
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION='1.1.0';
+const APP_VERSION='1.4.0';
 const isIOS=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const DAYS=['日','月','火','水','木','金','土'];
@@ -269,8 +322,8 @@ const blobSet=(k,v)=>db?tx('blobs','readwrite',s=>s.put(v,k)):(mem.blobs[k]=v,Pr
 const blobDel=k=>db?tx('blobs','readwrite',s=>s.delete(k)):(delete mem.blobs[k],Promise.resolve());
 
 /* ---------- state ---------- */
-const DEFAULT_SETTINGS={trans:'fade',transMs:900,dur:8,fit:'contain',shuffle:0,progress:1,clock:1,
-  tick:1,tickText:'ようこそ ｜ 本日の営業時間 10:00〜20:00 ｜ 管理画面は左上を3回タップ',tickDur:28,tickBg:'#111418',tickFg:'#ffffff',
+const DEFAULT_SETTINGS={trans:'fade',transMs:900,dur:8,fit:'contain',shuffle:0,progress:1,layout:null,
+  tickText:'ようこそ ｜ 本日の営業時間 10:00〜20:00 ｜ 管理画面は左上を3回タップ',tickDur:14,tickBg:'#111418',tickFg:'#ffffff',
   autostart:0,reload:'',hours:0,on:'09:00',off:'21:00',pin:'',cursor:1,wake:1};
 let S={...DEFAULT_SETTINGS};
 let items=[];             // {id,type:'image'|'video'|'text'|'url',name,dur,enabled,days:[0..6],start,end, mediaId, title,body,tag,bg,fg,align, url}
@@ -288,7 +341,9 @@ function demoItems(){return [
 /* ---------- scheduling ---------- */
 const toMin=s=>{if(!s)return null;const[h,m]=s.split(':').map(Number);return h*60+m;};
 function inWindow(start,end,now){const a=toMin(start),b=toMin(end);if(a==null&&b==null)return true;const n=now.getHours()*60+now.getMinutes();const A=a??0,B=b??1440;return A<=B?(n>=A&&n<B):(n>=A||n<B);}
-function isActive(it,now=new Date()){if(!it.enabled)return false;if(it.days&&it.days.length&&!it.days.includes(now.getDay()))return false;if(!inWindow(it.start,it.end,now))return false;if((it.type==='image'||it.type==='video')&&!urls[it.mediaId])return false;return true;}
+const dt=s=>s?new Date(s):null; // 'YYYY-MM-DDTHH:MM' はローカル時刻として解釈
+function periodState(it,now=new Date()){const a=dt(it.from),b=dt(it.until);if(a&&now<a)return 'before';if(b&&now>=b)return 'after';return 'in';}
+function isActive(it,now=new Date()){if(!it.enabled)return false;if(periodState(it,now)!=='in')return false;if(it.days&&it.days.length&&!it.days.includes(now.getDay()))return false;if(!inWindow(it.start,it.end,now))return false;if((it.type==='image'||it.type==='video')&&!urls[it.mediaId])return false;return true;}
 function inHours(now=new Date()){return !S.hours||inWindow(S.on,S.off,now);}
 
 /* ---------- player ---------- */
@@ -322,7 +377,7 @@ function show(it){
   $('#empty').hidden=true;
   const old=[...stage.querySelectorAll('.layer')];
   const L=makeLayer(it);stage.appendChild(L);
-  cur=it;
+  cur=it;applyOverlays();
   const go=()=>{
     void L.offsetWidth;L.classList.add('show');
     old.forEach(o=>{o.classList.remove('show');if(S.trans==='slide')o.classList.add('out');const v=o.querySelector('video');setTimeout(()=>{if(v){v.pause();v.removeAttribute('src');v.load();}o.remove();},S.transMs+80);});
@@ -354,7 +409,7 @@ function clear(){stage.querySelectorAll('.layer').forEach(l=>l.remove());cur=nul
 function sleep(){
   if(!sleeping){log('営業時間外: 黒画面に切替');sleeping=true;}
   stage.querySelectorAll('.layer').forEach(l=>l.remove());cur=null;$('#empty').hidden=true;
-  $('#ticker').hidden=true;$('#clock').hidden=true;
+  $('#widgets').classList.add('off');
   clearTimeout(timer);timer=setTimeout(()=>{if(inHours()){sleeping=false;log('営業時間開始: 再生再開');applyOverlays();advance(1);}else sleep();},30000);
 }
 function togglePause(){
@@ -372,22 +427,74 @@ function startPlayback(fs){
   log('再生開始');
   setTimeout(()=>toast('管理画面：左上の角を2秒長押し',4000),1200);
 }
-function stopPlayback(){clearTimeout(timer);playing=false;paused=false;sleeping=false;clear();$('#empty').hidden=true;$('#boot').style.display='';$('#ticker').hidden=true;$('#clock').hidden=true;stage.style.bottom='0';log('開始画面に戻りました');}
+function stopPlayback(){clearTimeout(timer);playing=false;paused=false;sleeping=false;clear();$('#empty').hidden=true;$('#boot').style.display='';$('#widgets').classList.add('off');log('開始画面に戻りました');}
 function enterFS(){const d=document.documentElement;if(isStandalone||!(d.requestFullscreen||d.webkitRequestFullscreen))return;try{const p=(d.requestFullscreen||d.webkitRequestFullscreen).call(d);if(p&&p.catch)p.catch(()=>toast('全画面にできませんでした'));}catch(e){toast('全画面にできませんでした');}}
 function toggleFS(){if(document.fullscreenElement||document.webkitFullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen).call(document);}else enterFS();}
 
 /* progress bar */
-(function prog(){const p=$('#progress');if(S.progress&&playing&&curDur&&!sleeping){const el=paused?(curDur-remain):(curDur-remain)+(performance.now()-startedAt);p.style.width=Math.min(100,el/curDur*100)+'%';}else p.style.width='0';requestAnimationFrame(prog);})();
+(function prog(){const p=$('#progress');if(S.progress&&playing&&curDur&&!sleeping){const el=paused?(curDur-remain):(curDur-remain)+(performance.now()-startedAt);p.style.transform=`scaleX(${Math.min(1,el/curDur).toFixed(4)})`;}else if(p.style.transform!=='scaleX(0)')p.style.transform='scaleX(0)';requestAnimationFrame(prog);})();
 
 /* ---------- overlays ---------- */
-function applyOverlays(){
-  $('#clock').hidden=!S.clock||sleeping;
-  const tk=$('#ticker');tk.hidden=!S.tick||!S.tickText||sleeping;
-  tk.style.setProperty('--tickbg',S.tickBg);tk.style.setProperty('--tickfg',S.tickFg);tk.style.setProperty('--tickdur',S.tickDur+'s');
-  const sp=tk.querySelector('span');if(sp.textContent!==S.tickText){sp.textContent=S.tickText;sp.style.animation='none';void sp.offsetWidth;sp.style.animation='';}
-  stage.style.bottom=(!tk.hidden)?tk.offsetHeight+'px':'0';
+const WCOL={main:'#3ddc97',clock:'#5aa9ff',ticker:'#ffa94d',text:'#c084fc',image:'#f472b6'};
+const WNAME={main:'メイン再生エリア',clock:'時計',ticker:'テロップ',text:'テキスト',image:'画像・ロゴ'};
+const W=(type,x,y,w,h,extra)=>({id:type==='main'?'main':uid(),type,x,y,w,h,...(extra||{})});
+const CLOCK_DEF={color:'#ffffff',bg:'#000000',bgA:45};
+const LAYOUT_PRESETS={
+  full:()=>[W('main',0,0,100,100)],
+  bottom:()=>[W('main',0,0,100,93),W('ticker',0,93,100,7),W('clock',83,3,15,10,CLOCK_DEF)],
+  L:()=>[W('main',0,0,75,92),W('clock',75,0,25,14,{...CLOCK_DEF,bgA:100,bg:'#111418'}),W('text',75,14,25,78,{text:'本日のおすすめ\n\nブレンドコーヒー\n¥450',size:9,color:'#ffffff',bg:'#1b1f26',bgA:100,align:'center',bold:1}),W('ticker',0,92,100,8)],
+};
+function ensureLayout(){
+  if(Array.isArray(S.layout)&&S.layout.some(w=>w.type==='main'))return;
+  // 旧バージョンの設定（clock / tick）から移行
+  const L=[W('main',0,0,100,(S.tick===0)?100:93)];
+  if(S.tick!==0)L.push(W('ticker',0,93,100,7));
+  if(S.clock!==0)L.push(W('clock',83,3,15,10,CLOCK_DEF));
+  S.layout=L;delete S.clock;delete S.tick;
 }
-function tickClock(){const d=new Date();$('#clock').innerHTML=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}<small>${d.getMonth()+1}/${d.getDate()} (${DAYS[d.getDay()]})</small>`;}
+const hexA=(hex,a)=>{const n=parseInt((hex||'#000000').slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${(a??100)/100})`;};
+function place(el,w){el.style.left=w.x+'%';el.style.top=w.y+'%';el.style.width=w.w+'%';el.style.height=w.h+'%';}
+function applyOverlays(){
+  ensureLayout();
+  const box=$('#widgets');
+  box.classList.toggle('off',!playing||sleeping);
+  const main=S.layout.find(w=>w.type==='main');
+  const ci=playing&&cur?cur:null,hide=(ci&&ci.hide)||[];
+  place(stage,ci&&ci.full?{x:0,y:0,w:100,h:100}:main);
+  const keep=new Set();
+  S.layout.filter(w=>w.type!=='main').forEach((w,i)=>{
+    keep.add(w.id);
+    let el=box.querySelector(`[data-id="${w.id}"]`);
+    if(!el){el=document.createElement('div');el.dataset.id=w.id;el.className='wg wg-'+w.type;
+      if(w.type==='ticker')el.innerHTML='<div class="trk"></div>';
+      if(w.type==='text')el.innerHTML='<div></div>';
+      if(w.type==='image')el.appendChild(new Image());
+      box.appendChild(el);}
+    place(el,w);el.style.zIndex=i+1;el.classList.toggle('hid',hide.includes(w.type));
+    if(w.type==='clock'){el.style.color=w.color||'#fff';el.style.background=hexA(w.bg,w.bgA??45);el.style.borderRadius=(w.round??1)?'1.2vmin':'0';}
+    if(w.type==='ticker'){el.style.background=S.tickBg;el.style.color=S.tickFg;
+      const key=`${S.tickText}|${S.tickDur}|${el.clientWidth}x${el.clientHeight}`;if(el._key!==key){el._key=key;startTicker(el);}}
+    if(w.type==='text'){const tx=el.firstChild;tx.textContent=w.text||'';el.style.color=w.color;el.style.background=hexA(w.bg,w.bgA??0);tx.style.fontSize=(w.size||10)+'cqh';tx.style.fontWeight=w.bold?'900':'400';
+      el.style.justifyContent={left:'flex-start',center:'center',right:'flex-end'}[w.align||'left'];el.style.textAlign=w.align||'left';}
+    if(w.type==='image'){const im=el.querySelector('img');const u=urls[w.mediaId]||'';if(im.getAttribute('src')!==u)im.src=u;im.style.objectFit=w.fit||'contain';el.style.background=hexA(w.bg,w.bgA??0);}
+  });
+  box.querySelectorAll('.wg').forEach(el=>{if(!keep.has(el.dataset.id))el.remove();});
+  tickClock();
+}
+// テロップ：文を必要な数だけ並べ、Web Animations API（GPU合成）で途切れなくループさせる
+function startTicker(el){
+  const trk=el.querySelector('.trk');if(el._anim){el._anim.cancel();el._anim=null;}
+  trk.innerHTML='';const W=el.clientWidth;if(!S.tickText||!W)return;
+  const a=document.createElement('span');a.textContent=S.tickText;trk.appendChild(a);
+  const one=a.getBoundingClientRect().width;if(!one)return;
+  for(let i=1,n=Math.ceil(W/one)+1;i<n;i++)trk.appendChild(a.cloneNode(true));
+  const speed=W/Math.max(5,S.tickDur);            // px/秒：設定秒数で画面を横切る速さ
+  el._anim=trk.animate([{transform:'translate3d(0,0,0)'},{transform:`translate3d(${-one}px,0,0)`}],
+    {duration:one/speed*1000,iterations:Infinity,easing:'linear'});
+}
+window.addEventListener('resize',()=>{clearTimeout(window._rz);window._rz=setTimeout(applyOverlays,200);});
+function tickClock(){const d=new Date();const h=`<b>${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</b><small>${d.getMonth()+1}/${d.getDate()} (${DAYS[d.getDay()]})</small>`;
+  document.querySelectorAll('.wg-clock').forEach(el=>{if(el.innerHTML!==h)el.innerHTML=h;});}
 setInterval(tickClock,1000);tickClock();
 
 /* ---------- kiosk features ---------- */
@@ -416,6 +523,98 @@ setInterval(()=>{
 // watchdog: if timer was lost (e.g. tab throttled), recover
 setInterval(()=>{if(playing&&!paused&&!sleeping&&cur&&curDur&&performance.now()-startedAt>curDur+15000){log('ウォッチドッグ: 再生を復旧');advance(1);}},10000);
 
+/* ---------- layout editor ---------- */
+let selW=null;const frame=$('#frame');
+function frameAR(){frame.style.setProperty('--ar',`${window.innerWidth}/${window.innerHeight}`);}
+window.addEventListener('resize',()=>{frameAR();});
+function renderLayout(){
+  ensureLayout();frameAR();frame.innerHTML='';
+  const ordered=[...S.layout.filter(w=>w.type==='main'),...S.layout.filter(w=>w.type!=='main')];
+  ordered.forEach(w=>{
+    const el=document.createElement('div');el.className='lw'+(selW===w.id?' sel':'');el.style.setProperty('--c',WCOL[w.type]);place(el,w);el.dataset.id=w.id;
+    if(w.type==='image'&&urls[w.mediaId]){const im=new Image();im.src=urls[w.mediaId];el.appendChild(im);}
+    else{const t=document.createElement('span');t.textContent=w.type==='text'?(w.text||'テキスト').split('\n')[0].slice(0,14):w.type==='ticker'?'テロップ':WNAME[w.type];el.appendChild(t);}
+    const hd=document.createElement('div');hd.className='hd';el.appendChild(hd);
+    el.addEventListener('pointerdown',e=>startDrag(e,w,e.target===hd?'size':'move'));
+    frame.appendChild(el);
+  });
+  renderProps();
+}
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+function snapVal(v,targets){let best=v,d=1.5;for(const t of targets){if(Math.abs(v-t)<d){d=Math.abs(v-t);best=t;}}return Math.round(best*2)/2;}
+function startDrag(e,w,mode){
+  e.preventDefault();e.stopPropagation();selW=w.id;
+  const r=frame.getBoundingClientRect(),sx=e.clientX,sy=e.clientY,o={...w};
+  const el=e.currentTarget;el.setPointerCapture(e.pointerId);
+  frame.querySelectorAll('.lw').forEach(x=>x.classList.toggle('sel',x===el));renderProps();
+  const others=S.layout.filter(x=>x!==w);const tx=[0,100,...others.flatMap(x=>[x.x,x.x+x.w])],ty=[0,100,...others.flatMap(x=>[x.y,x.y+x.h])];
+  const mv=ev=>{
+    const dx=(ev.clientX-sx)/r.width*100,dy=(ev.clientY-sy)/r.height*100;
+    if(mode==='move'){
+      let x=clamp(o.x+dx,0,100-o.w),y=clamp(o.y+dy,0,100-o.h);
+      const x1=snapVal(x,tx),x2=snapVal(x+o.w,tx)-o.w;x=Math.abs(x1-x)<=Math.abs(x2-x)?x1:x2;
+      const y1=snapVal(y,ty),y2=snapVal(y+o.h,ty)-o.h;y=Math.abs(y1-y)<=Math.abs(y2-y)?y1:y2;
+      w.x=clamp(x,0,100-o.w);w.y=clamp(y,0,100-o.h);
+    }else{
+      w.w=clamp(snapVal(o.x+o.w+dx,tx)-o.x,3,100-o.x);w.h=clamp(snapVal(o.y+o.h+dy,ty)-o.y,3,100-o.y);
+    }
+    place(el,w);applyOverlays();updateNums(w);
+  };
+  const up=()=>{el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up);el.removeEventListener('pointercancel',up);save();};
+  el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+}
+frame.addEventListener('pointerdown',e=>{if(e.target===frame){selW=null;renderLayout();}});
+function updateNums(w){['x','y','w','h'].forEach(k=>{const i=$('#lp-'+k);if(i&&document.activeElement!==i)i.value=Math.round(w[k]*10)/10;});}
+function renderProps(){
+  const P=$('#lprops');const w=S.layout.find(x=>x.id===selW);
+  if(!w){P.innerHTML='<h4>配置する項目</h4><div style="font-size:13px;color:var(--mut);line-height:1.7">枠をタップすると、位置・大きさ・色などを細かく設定できます。<br>上のボタンで時計・テロップ・テキスト・画像を追加できます。<br><br>メイン再生エリア：プレイリストの画像・動画・スライドが表示される場所です（常に一番奥）。</div>';return;}
+  const f=(lab,html)=>`<label>${lab}${html}</label>`;
+  const col=(k,def)=>`<input type="color" data-k="${k}" value="${esc(w[k]||def)}">`;
+  const rng=(k,min,max,def)=>`<input type="range" data-k="${k}" data-n="1" min="${min}" max="${max}" value="${w[k]??def}">`;
+  let h=`<h4 style="color:${WCOL[w.type]}">${WNAME[w.type]}</h4>
+   <div class="g4">${['x','y','w','h'].map(k=>`<label>${{x:'左 %',y:'上 %',w:'幅 %',h:'高さ %'}[k]}<input type="number" id="lp-${k}" step="0.5" min="0" max="100" value="${Math.round(w[k]*10)/10}"></label>`).join('')}</div>`;
+  if(w.type==='clock')h+=f('文字色',col('color','#ffffff'))+f('背景色',col('bg','#000000'))+f('背景の濃さ',rng('bgA',0,100,45));
+  if(w.type==='ticker')h+=`<div style="font-size:12px;color:var(--mut)">文・速さ・色は「表示・オーバーレイ」タブで設定します。</div>`;
+  if(w.type==='text')h+=f('文字',`<textarea data-k="text">${esc(w.text)}</textarea>`)+f('文字の大きさ（枠の高さ比）',rng('size',3,80,10))
+    +f('配置',`<select data-k="align"><option value="left">左</option><option value="center" ${w.align==='center'?'selected':''}>中央</option><option value="right" ${w.align==='right'?'selected':''}>右</option></select>`)
+    +f('太字',`<select data-k="bold" data-n="1"><option value="0">オフ</option><option value="1" ${w.bold?'selected':''}>オン</option></select>`)
+    +f('文字色',col('color','#ffffff'))+f('背景色',col('bg','#000000'))+f('背景の濃さ',rng('bgA',0,100,0));
+  if(w.type==='image')h+=`<button class="sm" id="lpImg">画像を選ぶ</button>`+f('合わせ方',`<select data-k="fit"><option value="contain">全体を表示</option><option value="cover" ${w.fit==='cover'?'selected':''}>枠いっぱい（切り抜き）</option></select>`)
+    +f('背景色',col('bg','#000000'))+f('背景の濃さ',rng('bgA',0,100,0));
+  h+='<div class="row">';
+  if(w.type!=='main')h+='<button class="sm" id="lpFront">最前面へ</button><button class="sm" id="lpBack">背面へ</button>';
+  h+='<button class="sm" id="lpFill">全体に広げる</button>';
+  if(w.type!=='main')h+='<button class="sm dan" id="lpDel">削除</button>';
+  h+='</div>';
+  P.innerHTML=h;
+  ['x','y','w','h'].forEach(k=>$('#lp-'+k).addEventListener('input',e=>{const v=Number(e.target.value);if(!isFinite(v))return;
+    if(k==='x')w.x=clamp(v,0,100-w.w);if(k==='y')w.y=clamp(v,0,100-w.h);if(k==='w')w.w=clamp(v,3,100-w.x);if(k==='h')w.h=clamp(v,3,100-w.y);
+    save();applyOverlays();const el=frame.querySelector(`[data-id="${w.id}"]`);if(el)place(el,w);}));
+  P.querySelectorAll('[data-k]').forEach(i=>i.addEventListener(i.tagName==='SELECT'?'change':'input',()=>{w[i.dataset.k]=i.dataset.n?Number(i.value):i.value;save();applyOverlays();
+    if(i.dataset.k==='text'){const s=frame.querySelector(`[data-id="${w.id}"] span`);if(s)s.textContent=(w.text||'テキスト').split('\n')[0].slice(0,14);}}));
+  const mvz=d=>{const a=S.layout,i=a.indexOf(w);a.splice(i,1);d>0?a.push(w):a.splice(1,0,w);save();applyOverlays();renderLayout();};
+  if($('#lpFront'))$('#lpFront').onclick=()=>mvz(1);
+  if($('#lpBack'))$('#lpBack').onclick=()=>mvz(-1);
+  $('#lpFill').onclick=()=>{Object.assign(w,{x:0,y:0,w:100,h:100});save();applyOverlays();renderLayout();};
+  if($('#lpDel'))$('#lpDel').onclick=()=>{S.layout=S.layout.filter(x=>x!==w);if(w.mediaId)dropWidgetMedia(w.mediaId);selW=null;save();applyOverlays();renderLayout();};
+  if($('#lpImg'))$('#lpImg').onclick=()=>{imgTarget=w;$('#wImgIn').click();};
+}
+async function dropWidgetMedia(mid){if(S.layout.some(x=>x.mediaId===mid)||items.some(x=>x.mediaId===mid))return;await blobDel(mid).catch(()=>{});if(urls[mid]){URL.revokeObjectURL(urls[mid]);delete urls[mid];}}
+let imgTarget=null;
+$('#wImgIn').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f||!imgTarget)return;const mid=uid();
+  try{await blobSet(mid,f);}catch(err){toast('画像を保存できませんでした');return;}
+  urls[mid]=URL.createObjectURL(f);const old=imgTarget.mediaId;imgTarget.mediaId=mid;if(old)dropWidgetMedia(old);save();applyOverlays();renderLayout();};
+$$('[data-add]').forEach(b=>b.onclick=()=>{
+  const t=b.dataset.add;ensureLayout();
+  if((t==='clock'||t==='ticker')&&S.layout.some(w=>w.type===t)){toast(WNAME[t]+'はすでに配置されています');return;}
+  const w=t==='clock'?W('clock',80,4,16,10,CLOCK_DEF):t==='ticker'?W('ticker',0,92,100,8):t==='text'?W('text',30,35,40,20,{text:'テキスト',size:30,color:'#ffffff',bg:'#000000',bgA:50,align:'center',bold:1}):W('image',4,4,16,14,{fit:'contain'});
+  S.layout.push(w);selW=w.id;save();applyOverlays();renderLayout();
+  if(t==='image'){imgTarget=w;$('#wImgIn').click();}
+});
+$$('[data-preset]').forEach(b=>b.onclick=()=>confirmModal('レイアウトをプリセットに置き換えますか？（追加した枠は消えます）',()=>{
+  (S.layout||[]).forEach(w=>{if(w.mediaId){const m=w.mediaId;setTimeout(()=>dropWidgetMedia(m),0);}});
+  S.layout=LAYOUT_PRESETS[b.dataset.preset]();selW=null;save();applyOverlays();renderLayout();}));
+
 /* ---------- admin open ---------- */
 // 左上の角：2秒長押し または 1.5秒以内に3回タップ
 let taps=[],pressT=null;const hs=$('#hotspot');
@@ -441,7 +640,7 @@ $('#aHome').onclick=()=>{$('#admin').classList.remove('on');stopPlayback();};
 $('#aNext').onclick=()=>playing&&advance(1);
 $('#aPrev').onclick=()=>playing&&advance(-1);
 $('#aPause').onclick=togglePause;
-$$('.tabs button').forEach(b=>b.onclick=()=>{$$('.tabs button').forEach(x=>x.classList.toggle('on',x===b));$$('.pane').forEach(p=>p.classList.toggle('on',p.id==='tab-'+b.dataset.tab));if(b.dataset.tab==='data')renderStats();});
+$$('.tabs button').forEach(b=>b.onclick=()=>{$$('.tabs button').forEach(x=>x.classList.toggle('on',x===b));$$('.pane').forEach(p=>p.classList.toggle('on',p.id==='tab-'+b.dataset.tab));if(b.dataset.tab==='data')renderStats();if(b.dataset.tab==='lay')renderLayout();});
 
 document.addEventListener('keydown',e=>{
   const typing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
@@ -461,7 +660,11 @@ function describe(it){
   const d=it.days&&it.days.length<7?it.days.map(x=>DAYS[x]).join(''):'毎日';
   const t=(it.start||it.end)?` ${it.start||'0:00'}–${it.end||'24:00'}`:'';
   const dur=it.type==='video'&&!it.dur?'動画の長さ':`${it.dur||S.dur}秒`;
-  return `${typ} ・ ${dur} ・ ${d}${t}`+(isActive(it)?'':' ・ 現在は対象外');
+  const fmt=x=>{const v=dt(x);return `${v.getFullYear()}/${v.getMonth()+1}/${v.getDate()} ${String(v.getHours()).padStart(2,'0')}:${String(v.getMinutes()).padStart(2,'0')}`;};
+  const per=(it.from||it.until)?` ・ ${it.from?fmt(it.from):''}〜${it.until?fmt(it.until):''}`:'';
+  const ov=(it.full?' ・ 全画面':'')+(it.hide&&it.hide.length?' ・ 枠非表示あり':'');
+  const ps=periodState(it);const st=ps==='before'?' ・ 開始前':ps==='after'?' ・ 期限切れ':(isActive(it)?'':' ・ 現在は対象外');
+  return `${typ} ・ ${dur} ・ ${d}${t}${per}${ov}${st}`;
 }
 function renderItems(){
   const box=$('#items');box.innerHTML='';
@@ -546,15 +749,26 @@ function editItem(it,isNew){
     <label>曜日</label><div class="days" id="eDays">${dayHtml}</div>
     <label>時間帯</label><div class="row"><input type="time" id="eStart" value="${esc(it.start)}" style="width:130px"><span style="align-self:center">〜</span><input type="time" id="eEnd" value="${esc(it.end)}" style="width:130px"></div>
     <div></div><div style="font-size:12px;color:var(--mut)">時間帯を空欄にすると終日。22:00〜02:00 のような日またぎも可。</div>
+    <label>表示開始日時</label><div class="row"><input type="datetime-local" id="eFrom" value="${esc(it.from)}" style="flex:1;min-width:0"><button class="sm" type="button" data-clr="eFrom">クリア</button></div>
+    <label>表示終了日時</label><div class="row"><input type="datetime-local" id="eUntil" value="${esc(it.until)}" style="flex:1;min-width:0"><button class="sm" type="button" data-clr="eUntil">クリア</button></div>
+    <div></div><div style="font-size:12px;color:var(--mut)">開始日時から有効、終了日時になると自動で表示されなくなります。空欄なら制限なし。曜日・時間帯と組み合わせて使えます。</div>
+    <label>このスライドで表示する枠</label><div class="chk" id="eShow">${[['clock','時計'],['ticker','テロップ'],['text','テキスト枠'],['image','画像・ロゴ枠']].map(([k,n])=>`<label><input type="checkbox" value="${k}" ${(it.hide||[]).includes(k)?'':'checked'}>${n}</label>`).join('')}</div>
+    <label>メイン再生エリア</label><select id="eFull"><option value="0">レイアウトどおり</option><option value="1" ${it.full?'selected':''}>このスライドだけ全画面</option></select>
   </div><footer><button id="eCancel">キャンセル</button><button class="pri" id="eOk">保存</button></footer>`;
   $('#modal').classList.add('on');
   $('#eCancel').onclick=closeModal;
+  m.querySelectorAll('[data-clr]').forEach(b=>b.onclick=()=>{$('#'+b.dataset.clr).value='';});
   $('#eOk').onclick=()=>{
+    {const f=$('#eFrom').value,u=$('#eUntil').value;if(f&&u&&dt(f)>=dt(u)){toast('終了日時は開始日時より後にしてください');return;}
+     if(!$('#eDays').querySelector('input:checked')){toast('曜日を1つ以上選んでください');return;}
+     if(it.type==='url'&&!/^https?:\/\//.test($('#eUrl').value.trim())){toast('http(s):// から始まるURLを入力してください');return;}}
     it.name=$('#eName').value.trim()||'無題';
     const dv=$('#eDur').value;it.dur=dv===''?(it.type==='video'?0:S.dur):Math.max(0,Number(dv));
     if(it.type!=='video'&&!it.dur)it.dur=S.dur;
     it.days=[...$('#eDays').querySelectorAll('input:checked')].map(x=>+x.value);
     if(!it.days.length){toast('曜日を1つ以上選んでください');return;}
+    it.from=$('#eFrom').value;it.until=$('#eUntil').value;
+    it.hide=[...$('#eShow').querySelectorAll('input:not(:checked)')].map(x=>x.value);it.full=$('#eFull').value==='1'?1:0;
     it.start=$('#eStart').value;it.end=$('#eEnd').value;
     if(it.type==='text'){it.tag=$('#eTag').value;it.title=$('#eTitle').value;it.body=$('#eBody').value;it.bg=$('#eBg').value;it.fg=$('#eFg').value;it.align=$('#eAlign').value;}
     if(it.type==='url'){const u=$('#eUrl').value.trim();if(!/^https?:\/\//.test(u)){toast('http(s):// から始まるURLを入力してください');return;}it.url=u;}
@@ -567,7 +781,7 @@ function editItem(it,isNew){
 }
 
 /* ---------- admin: settings ---------- */
-const bind=[['#sTrans','trans'],['#sTransMs','transMs',1],['#sDur','dur',1],['#sFit','fit'],['#sShuffle','shuffle',1],['#sProg','progress',1],['#sClock','clock',1],['#sTick','tick',1],['#sTickText','tickText'],['#sTickDur','tickDur',1],['#sTickBg','tickBg'],['#sTickFg','tickFg'],
+const bind=[['#sTrans','trans'],['#sTransMs','transMs',1],['#sDur','dur',1],['#sFit','fit'],['#sShuffle','shuffle',1],['#sProg','progress',1],['#sTickText','tickText'],['#sTickDur','tickDur',1],['#sTickBg','tickBg'],['#sTickFg','tickFg'],
   ['#kAuto','autostart',1],['#kReload','reload'],['#kHours','hours',1],['#kOn','on'],['#kOff','off'],['#kPin','pin'],['#kCursor','cursor',1],['#kWake','wake',1]];
 function renderSettings(){bind.forEach(([sel,k])=>{$(sel).value=S[k];});}
 bind.forEach(([sel,k,num])=>{const el=$(sel);el.addEventListener(el.tagName==='SELECT'||el.type==='color'||el.type==='time'?'change':'input',()=>{
@@ -594,10 +808,62 @@ $('#importIn').onchange=async e=>{const f=e.target.files[0];e.target.value='';if
   items=j.items.filter(i=>i&&i.type&&['image','video','text','url'].includes(i.type)).map(i=>({...i,id:i.id||uid()}));
   const missing=items.filter(i=>(i.type==='image'||i.type==='video')&&!urls[i.mediaId]).length;
   save();renderItems();renderSettings();applyOverlays();toast(missing?`読み込みました（メディア${missing}件はこの端末にありません）`:'読み込みました',3500);log('設定を読み込み');if(playing)advance(1);}catch(err){toast('読み込み失敗: '+err.message);}};
+/* ---------- package (.signage) : "SIGNAGE1" + uint32 JSON長 + JSON + メディア本体を連結 ---------- */
+const MAGIC='SIGNAGE1';let pkgFile=null;
+const fmtMB=n=>n<1048576?Math.max(1,Math.round(n/1024))+'KB':(n/1048576).toFixed(n<10485760?1:0)+'MB';
+function usedMediaIds(){return [...new Set([...items,...(S.layout||[])].map(x=>x.mediaId).filter(Boolean))];}
+$('#pBuild').onclick=async()=>{
+  const info=$('#pInfo');info.textContent='書き出しを準備しています…';$('#pShare').hidden=$('#pSave').hidden=true;pkgFile=null;
+  try{
+    const media=[],blobs=[];let miss=0;
+    for(const id of usedMediaIds()){const b=await blobGet(id).catch(()=>null);if(!b){miss++;continue;}
+      media.push({id,size:b.size,type:b.type||'',name:b.name||''});blobs.push(b);}
+    const manifest={app:'kiosk-signage',format:1,version:APP_VERSION,exportedAt:new Date().toISOString(),settings:{...S,pin:''},items,media};
+    const jb=new TextEncoder().encode(JSON.stringify(manifest));
+    const head=new Uint8Array(12);head.set(new TextEncoder().encode(MAGIC),0);new DataView(head.buffer).setUint32(8,jb.length,true);
+    const d=new Date(),stamp=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+    pkgFile=new File([head,jb,...blobs],`signage-${stamp}.signage`,{type:'application/octet-stream'});
+    info.textContent=`作成しました：${pkgFile.name}（${fmtMB(pkgFile.size)}・メディア${media.length}件${miss?`／見つからないメディア${miss}件は除外`:''}）`;
+    $('#pShare').hidden=!(navigator.canShare&&navigator.canShare({files:[pkgFile]}));$('#pSave').hidden=false;
+    log('まとめファイル作成 '+fmtMB(pkgFile.size));
+  }catch(e){info.textContent='';toast('書き出しに失敗しました: '+e.message,4000);log('書き出し失敗 '+e.message);}
+};
+$('#pShare').onclick=async()=>{if(!pkgFile)return;try{await navigator.share({files:[pkgFile],title:pkgFile.name});}catch(e){if(e.name!=='AbortError')toast('共有できませんでした。「ファイルとして保存」を使ってください',4000);}};
+$('#pSave').onclick=()=>{if(!pkgFile)return;try{const a=document.createElement('a');a.href=URL.createObjectURL(pkgFile);a.download=pkgFile.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000);}catch(e){toast('保存できませんでした');}};
+$('#pImport').onclick=()=>$('#pIn').click();
+$('#pIn').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const head=new Uint8Array(await f.slice(0,12).arrayBuffer());
+    if(new TextDecoder().decode(head.slice(0,8))!==MAGIC)throw new Error('まとめファイル（.signage）ではありません');
+    const jl=new DataView(head.buffer).getUint32(8,true);
+    const man=JSON.parse(await f.slice(12,12+jl).text());
+    if(!Array.isArray(man.items)||!Array.isArray(man.media))throw new Error('ファイルが壊れています');
+    confirmModal(`「${f.name}」を読み込み、今の内容（項目${items.length}件）を置き換えますか？\nメディア${man.media.length}件・${fmtMB(f.size)}`,async()=>{
+      const info=$('#pInfo');let off=12+jl;
+      // 先に新しいメディアを保存（失敗しても今の内容は残る）
+      const saved=[];
+      try{
+        for(let i=0;i<man.media.length;i++){const m=man.media[i];info.textContent=`読み込み中… ${i+1}/${man.media.length}`;
+          const raw=f.slice(off,off+m.size,m.type);off+=m.size;
+          const blob=m.name?new File([raw],m.name,{type:m.type}):raw;
+          await blobSet(m.id,blob);saved.push(m.id);}
+      }catch(err){for(const id of saved)if(!usedMediaIds().includes(id))await blobDel(id).catch(()=>{});info.textContent='';toast('容量不足などで読み込めませんでした',4000);log('読み込み失敗 '+err.message);return;}
+      // 古いメディアのうち不要になるものを削除
+      const keep=new Set(man.media.map(m=>m.id));
+      for(const id of usedMediaIds())if(!keep.has(id)){await blobDel(id).catch(()=>{});if(urls[id]){URL.revokeObjectURL(urls[id]);delete urls[id];}}
+      for(const id of keep){if(urls[id])URL.revokeObjectURL(urls[id]);const b=await blobGet(id);if(b)urls[id]=URL.createObjectURL(b);}
+      const pin=S.pin;S={...DEFAULT_SETTINGS,...(man.settings||{}),pin};items=man.items;selW=null;
+      save();renderItems();renderSettings();applyOverlays();if($('#tab-lay').classList.contains('on'))renderLayout();
+      info.textContent=`読み込み完了：項目${items.length}件・メディア${man.media.length}件`;log('まとめファイルを読み込み '+f.name);toast('読み込みました');
+      if(playing){cur=null;advance(1);}
+    });
+  }catch(err){toast('読み込み失敗: '+err.message,4000);}
+};
 $('#dReload').onclick=()=>location.reload();
 $('#dDemo').onclick=()=>{items.push(...demoItems());save();renderItems();toast('デモ項目を追加しました');};
 $('#dReset').onclick=()=>confirmModal('すべての項目・メディア・設定を削除しますか？',async()=>{
-  for(const i of items)if(i.mediaId)await blobDel(i.mediaId).catch(()=>{});
+  for(const i of [...items,...(S.layout||[])])if(i.mediaId)await blobDel(i.mediaId).catch(()=>{});
   Object.values(urls).forEach(u=>URL.revokeObjectURL(u));for(const k in urls)delete urls[k];
   items=[];S={...DEFAULT_SETTINGS};save();renderItems();renderSettings();renderStats();applyOverlays();clear();toast('初期化しました');log('初期化');});
 
@@ -619,8 +885,10 @@ $('#bAdmin').onclick=()=>openAdmin();
   try{const s=await kvGet('settings');if(s)S={...DEFAULT_SETTINGS,...s};}catch(e){}
   let stored=null;try{stored=await kvGet('items');}catch(e){}
   if(Array.isArray(stored))items=stored;else{items=demoItems();save();}
-  for(const it of items){if(it.mediaId&&!urls[it.mediaId]){try{const b=await blobGet(it.mediaId);if(b)urls[it.mediaId]=URL.createObjectURL(b);else log('メディアが見つかりません: '+it.name);}catch(e){}}}
+  ensureLayout();
+  for(const it of [...items,...S.layout]){if(it.mediaId&&!urls[it.mediaId]){try{const b=await blobGet(it.mediaId);if(b)urls[it.mediaId]=URL.createObjectURL(b);else log('メディアが見つかりません: '+(it.name||'レイアウト画像'));}catch(e){}}}
   if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+  applyOverlays();
   log(`起動（項目 ${items.length} 件 / 保存先 ${db?'IndexedDB':'メモリ'}）`);
   if(S.autostart){$('#autostartNote').textContent='自動再生がオンのため、まもなく開始します…';setTimeout(()=>{if($('#boot').style.display!=='none')startPlayback(false);},2500);}
 })();
