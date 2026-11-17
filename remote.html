@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b0d10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="サイネージ操作">
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>サイネージ操作</title>
 <style>
 :root{--bg:#0b0d10;--panel:#14171c;--line:#262b33;--fg:#e9edf2;--mut:#8a94a3;--acc:#3ddc97;--warn:#ff6b5b;--amber:#f2c14e;
@@ -69,6 +69,7 @@ a{color:var(--acc)}
 </head>
 <body>
 <div class="wrap">
+  <div class="card" id="noSrv" hidden style="border-color:#f2c14e"><h2 style="color:#f2c14e">Raspberry Pi のサーバーが見つかりません</h2><p class="mut">この操作画面は、Raspberry Pi のサーバーから開いたときに使えます。<br>例：<b>http://（PiのIPアドレス）:8080/remote</b><br>GitHub Pages など、サーバーのない場所では操作できません。</p></div>
   <h1>サイネージ操作 <small id="host"></small></h1>
 
   <div class="card">
@@ -114,7 +115,7 @@ a{color:var(--acc)}
   <div class="card">
     <h2>詳細設定</h2>
     <p class="mut" style="margin-bottom:10px">レイアウト・スケジュール（曜日・時間帯・表示期間）・切替効果・営業時間などは詳細設定画面で変更できます。変更はすぐサイネージに反映されます。</p>
-    <div class="row"><button onclick="location.href='/?mode=editor'">詳細設定を開く</button></div>
+    <div class="row"><button onclick="location.href='./?mode=editor'">詳細設定を開く</button></div>
   </div>
 </div>
 <div id="toast"></div>
@@ -140,21 +141,21 @@ async function api(path,opt){
 }
 function askPin(){$('#pinBox').classList.add('on');$('#pinIn').value='';setTimeout(()=>$('#pinIn').focus(),50);}
 $('#pinOk').onclick=async()=>{try{localStorage.setItem('signagePin',$('#pinIn').value);}catch(e){}
-  const r=await fetch('/api/auth',{method:'POST',headers:{'X-Pin':pin()}});
+  const r=await fetch('api/auth',{method:'POST',headers:{'X-Pin':pin()}});
   if(r.ok){$('#pinBox').classList.remove('on');toast('認証しました');}else{toast('PINが違います');$('#pinIn').value='';}};
 $('#pinIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('#pinOk').click();});
 
 /* ---------- state ---------- */
-async function load(){st=await (await fetch('/api/state',{cache:'no-store'})).json();if(!st.settings)st.settings={};if(!st.items)st.items=[];render();}
+async function load(){st=await (await fetch('api/state',{cache:'no-store'})).json();if(!st.settings)st.settings={};if(!st.items)st.items=[];render();}
 async function mutate(fn,msg){
   if(busy)return;busy=true;
   try{await load();fn(st);
-    await api('/api/state',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({origin:ORIGIN,settings:st.settings,items:st.items})});
+    await api('api/state',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({origin:ORIGIN,settings:st.settings,items:st.items})});
     render();if(msg)toast(msg);}
   catch(e){if(e.message!=='PIN')toast('保存できませんでした: '+e.message,4000);}
   finally{busy=false;}
 }
-const cmd=(c,extra)=>api('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({cmd:c},extra||{}))}).catch(e=>{if(e.message!=='PIN')toast('送信できませんでした');});
+const cmd=(c,extra)=>api('api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({cmd:c},extra||{}))}).catch(e=>{if(e.message!=='PIN')toast('送信できませんでした');});
 
 function layout(s){
   if(!Array.isArray(s.layout)||!s.layout.some(w=>w.type==='main'))
@@ -172,8 +173,8 @@ function setWidget(type,on){mutate(s=>{const L=layout(s.settings);let w=L.find(x
 function thumb(el,it){
   el.innerHTML='';el.style.backgroundImage='';el.style.background='';el.style.color='';
   if(!it){return;}
-  if(it.type==='image'&&it.mediaId)el.style.backgroundImage=`url("/media/${it.mediaId}")`;
-  else if(it.type==='video'&&it.mediaId){const v=document.createElement('video');v.src=`/media/${it.mediaId}#t=0.5`;v.muted=true;v.playsInline=true;v.preload='metadata';v.style.cssText='width:100%;height:100%;object-fit:cover';el.appendChild(v);}
+  if(it.type==='image'&&it.mediaId)el.style.backgroundImage=`url("media/${it.mediaId}")`;
+  else if(it.type==='video'&&it.mediaId){const v=document.createElement('video');v.src=`media/${it.mediaId}#t=0.5`;v.muted=true;v.playsInline=true;v.preload='metadata';v.style.cssText='width:100%;height:100%;object-fit:cover';el.appendChild(v);}
   else if(it.type==='text'){el.style.background=it.bg||'#000';el.style.color=it.fg||'#fff';el.textContent=(it.title||'').slice(0,8);}
   else if(it.type==='url'){el.style.background='#2b3a55';el.textContent='WEB';}
 }
@@ -203,7 +204,7 @@ function render(){
 async function delItem(it){
   await mutate(s=>{s.items=s.items.filter(x=>x.id!==it.id);},'削除しました');
   if(it.mediaId&&!st.items.some(x=>x.mediaId===it.mediaId)&&!layout(st.settings).some(w=>w.mediaId===it.mediaId))
-    api('/api/media/'+it.mediaId,{method:'DELETE'}).catch(()=>{});
+    api('api/media/'+it.mediaId,{method:'DELETE'}).catch(()=>{});
 }
 function renderStatus(){
   const s=status,age=s.age==null?999:s.age+(Date.now()-(s._recv||Date.now()))/1000;
@@ -241,7 +242,7 @@ $('#fOk').onclick=()=>{const title=$('#fTitle').value.trim();if(!title){toast('�
 /* upload media */
 $('#addMedia').onclick=()=>$('#fileIn').click();
 function upload(f,mid,onp){return new Promise((res,rej)=>{const x=new XMLHttpRequest();
-  x.open('PUT',`/api/media?id=${mid}&name=${encodeURIComponent(f.name||'')}&type=${encodeURIComponent(f.type||'')}`);
+  x.open('PUT',`api/media?id=${mid}&name=${encodeURIComponent(f.name||'')}&type=${encodeURIComponent(f.type||'')}`);
   if(pin())x.setRequestHeader('X-Pin',pin());
   x.upload.onprogress=e=>{if(e.lengthComputable)onp(e.loaded/e.total);};
   x.onload=()=>{if(x.status===401){askPin();rej(new Error('PIN'));}else if(x.status>=200&&x.status<300)res();else rej(new Error('HTTP '+x.status));};
@@ -262,14 +263,13 @@ $('#fileIn').onchange=async e=>{
 
 /* ---------- live updates ---------- */
 function connect(){
-  const es=new EventSource('/api/events');
+  const es=new EventSource('api/events');
   es.addEventListener('status',e=>{status=JSON.parse(e.data);status._recv=Date.now();renderStatus();});
   es.addEventListener('state',e=>{const d=JSON.parse(e.data);if(d.origin!==ORIGIN)load().then(renderStatus);});
   es.onopen=()=>{load().then(renderStatus).catch(()=>{});};
 }
-fetch('/api/info').then(r=>r.json()).then(i=>{$('#host').textContent=i.hostname||'';if(i.pinRequired&&!pin())askPin();}).catch(()=>{});
-load().then(renderStatus).catch(()=>{$('#conn').textContent='サーバーに接続できません';});
-connect();
+fetch('api/info').then(r=>{if(!r.ok||!(r.headers.get('content-type')||'').includes('json'))throw 0;return r.json();}).then(i=>{$('#host').textContent=i.hostname||'';if(i.pinRequired&&!pin())askPin();}).then(()=>{load().then(renderStatus).catch(()=>{$('#conn').textContent='サーバーに接続できません';});connect();})
+  .catch(()=>{$('#noSrv').hidden=false;$('#conn').textContent='サーバーに接続できません';document.querySelectorAll('.wrap button').forEach(b=>{if(!b.closest('#noSrv'))b.disabled=true;});});
 })();
 </script>
 </body>
