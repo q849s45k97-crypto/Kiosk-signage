@@ -216,6 +216,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
         <input type="file" id="fileIn" accept="image/*,video/*" multiple hidden>
       </div>
       <div class="drop" id="drop">ここに画像・動画ファイルをドロップ</div>
+      <div class="hint" style="margin:-6px 0 14px">スライド用の画像は <a href="./maker.html" style="color:var(--acc)">サイネージ画像メーカー</a> で作れます。</div>
       <div class="items" id="items"></div>
     </div>
 
@@ -282,6 +283,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
     </div>
 
     <div class="pane" id="tab-data">
+      <div id="srvInfo" hidden style="background:#0f1216;border:1px solid var(--acc);border-radius:10px;padding:12px;font-size:13px;line-height:1.8;margin-bottom:14px"></div>
       <div class="stat" id="stats"></div>
       <div class="sec" style="margin-top:0">PACKAGE（画像・動画込み）</div>
       <div style="font-size:13px;color:var(--mut);line-height:1.7;margin-bottom:10px">プレイリスト・レイアウト・設定と、使っている画像・動画の元ファイルを1つのファイル（.signage）にまとめます。別の iPad で読み込むとすぐに同じ内容で再生できます。AirDrop や「ファイル」アプリで受け渡しできます（PINは含みません）。</div>
@@ -316,7 +318,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 (()=>{
 "use strict";
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION='1.6.1';
+const APP_VERSION='1.9.3';
 const isIOS=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const DAYS=['日','月','火','水','木','金','土'];
@@ -333,6 +335,15 @@ function toast(m,ms=2200){const t=$('#toast');t.textContent=m;t.classList.add('o
 const mem={kv:{},blobs:{}};let db=null;
 function openDB(){return new Promise(res=>{try{const r=indexedDB.open('kiosk-signage',1);r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('kv');d.createObjectStore('blobs');};r.onsuccess=()=>{db=r.result;res(true)};r.onerror=()=>res(false);}catch(e){res(false)}});}
 function tx(store,mode,fn){return new Promise((res,rej)=>{if(!db){res(fn(null));return;}try{const t=db.transaction(store,mode);const s=t.objectStore(store);const r=fn(s);t.oncomplete=()=>res(r&&r.result!==undefined?r.result:undefined);t.onerror=()=>rej(t.error);}catch(e){rej(e)}});}
+/* ---------- Raspberry Pi サーバーモード（pi/server.py から配信された時） ---------- */
+let SERVER=null;                       // /api/info の内容。null なら端末内保存（iPad / GitHub Pages）
+const MODE=new URLSearchParams(location.search).get('mode');
+const EDITOR=MODE==='editor';          // スマホ等から開く「詳細設定」専用（再生はしない）
+const CLIENT_ID=Math.random().toString(36).slice(2);
+function api(path,opt){opt=opt||{};opt.headers=Object.assign({},opt.headers||{});let pin='';try{pin=localStorage.getItem('signagePin')||'';}catch(e){}
+  if(pin)opt.headers['X-Pin']=pin;
+  return fetch(path,opt).then(r=>{if(r.status===401){toast('PINが必要です。操作画面（/remote）でPINを入力してください',5000);throw new Error('PIN');}if(!r.ok)throw new Error('HTTP '+r.status);return r;});}
+function setURL(mid,blob){if(urls[mid]&&urls[mid].startsWith('blob:'))URL.revokeObjectURL(urls[mid]);urls[mid]=SERVER?('/media/'+mid):URL.createObjectURL(blob);}
 const kvGet=k=>db?tx('kv','readonly',s=>s.get(k)):Promise.resolve(mem.kv[k]);
 const kvSet=(k,v)=>db?tx('kv','readwrite',s=>s.put(v,k)):(mem.kv[k]=v,Promise.resolve());
 // iPad(Safari) は File/Blob を IndexedDB にそのまま保存すると失敗・破損することがあるため、
@@ -341,12 +352,14 @@ const toRec=async v=>({buf:await v.arrayBuffer(),type:v.type||'',name:v.name||''
 const fromRec=r=>r.name?new File([r.buf],r.name,{type:r.type}):new Blob([r.buf],{type:r.type});
 const putRaw=(k,v)=>tx('blobs','readwrite',s=>s.put(v,k));
 async function blobSet(k,v){
+  if(SERVER){await api(`/api/media?id=${k}&name=${encodeURIComponent(v.name||'')}&type=${encodeURIComponent(v.type||'')}`,{method:'PUT',body:v});return;}
   if(!db){mem.blobs[k]=v;return;}
   let rec;try{rec=await toRec(v);}catch(e){throw new Error('ファイルを読み込めません（'+(e.name||e.message)+'）');}
   if(!rec.buf.byteLength&&v.size)throw new Error('ファイルの中身が空です');
   try{await putRaw(k,rec);}catch(e){throw new Error((e&&e.name==='QuotaExceededError')?'容量不足':((e&&(e.name||e.message))||'保存エラー'));}
 }
 async function blobGet(k){
+  if(SERVER){const r=await fetch('/media/'+k);if(!r.ok)return null;const b=await r.blob();const nm=decodeURIComponent(r.headers.get('X-Media-Name')||'');return nm?new File([b],nm,{type:b.type}):b;}
   if(!db)return mem.blobs[k];
   const r=await tx('blobs','readonly',s=>s.get(k));
   if(!r)return r;
@@ -357,7 +370,7 @@ async function blobGet(k){
   }
   return null;
 }
-const blobDel=k=>db?tx('blobs','readwrite',s=>s.delete(k)):(delete mem.blobs[k],Promise.resolve());
+const blobDel=k=>SERVER?api('/api/media/'+k,{method:'DELETE'}).catch(()=>{}):db?tx('blobs','readwrite',s=>s.delete(k)):(delete mem.blobs[k],Promise.resolve());
 
 /* ---------- state ---------- */
 const DEFAULT_SETTINGS={trans:'fade',transMs:900,dur:8,fit:'contain',shuffle:0,progress:1,layout:null,
@@ -367,7 +380,7 @@ let S={...DEFAULT_SETTINGS};
 let items=[];             // {id,type:'image'|'video'|'text'|'url',name,dur,enabled,days:[0..6],start,end, mediaId, title,body,tag,bg,fg,align, url}
 const urls={};            // mediaId -> objectURL
 let saveT=null;
-function save(){clearTimeout(saveT);saveT=setTimeout(()=>{kvSet('settings',S).catch(e=>log('保存失敗 '+e));kvSet('items',items).catch(e=>log('保存失敗 '+e));},250);}
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{if(SERVER){api('/api/state',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({origin:CLIENT_ID,settings:S,items})}).catch(e=>log('保存失敗 '+e.message));return;}kvSet('settings',S).catch(e=>log('保存失敗 '+e));kvSet('items',items).catch(e=>log('保存失敗 '+e));},250);}
 
 function demoItems(){return [
   {id:uid(),type:'text',name:'ウェルカム',dur:8,enabled:true,days:[0,1,2,3,4,5,6],start:'',end:'',tag:'WELCOME',title:'いらっしゃいませ',body:'館内マップ・イベント情報はこちらの画面でご案内しています。',bg:'#0f3d2e',fg:'#eafff5',align:'left'},
@@ -437,7 +450,7 @@ function show(it){
     const ok=()=>{go();schedule(it.dur||S.dur)};
     if(im.complete&&im.naturalWidth)ok();else{im.onload=ok;im.onerror=()=>{log('画像を表示できません: '+it.name);L.remove();schedule(0.5);};}
   }else{go();schedule(it.dur||S.dur);}
-  log('再生: '+it.name);markCurrent();
+  log('再生: '+it.name);markCurrent();reportStatus();
 }
 function schedule(sec){clearTimeout(timer);curDur=sec*1000;remain=curDur;startedAt=performance.now();if(!paused)timer=setTimeout(()=>advance(1),remain);}
 /* iPad(Safari)は「タップ中に再生を始めた<video>」にしか音声を許可しないため、
@@ -455,7 +468,9 @@ function unlockAudio(){
 }
 ['pointerdown','touchend','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true,capture:true}));
 let navDir=1;
+let blackout=false;
 function advance(dir){navDir=dir;
+  if(blackout){clearTimeout(timer);return;}
   if(!inHours()){sleep();return;}
   const it=nextItem(dir);
   if(!it){clear();timer=setTimeout(()=>advance(1),15000);return;}
@@ -464,7 +479,7 @@ function advance(dir){navDir=dir;
 }
 function clear(){stage.querySelectorAll('.layer').forEach(l=>l.remove());cur=null;$('#empty').hidden=false;}
 function sleep(){
-  if(!sleeping){log('営業時間外: 黒画面に切替');sleeping=true;}
+  if(!sleeping){log('営業時間外: 黒画面に切替');sleeping=true;reportStatus();}
   stage.querySelectorAll('.layer').forEach(l=>l.remove());cur=null;$('#empty').hidden=true;
   $('#widgets').classList.add('off');
   clearTimeout(timer);timer=setTimeout(()=>{if(inHours()){sleeping=false;log('営業時間開始: 再生再開');applyOverlays();advance(1);}else sleep();},30000);
@@ -474,7 +489,7 @@ function togglePause(){
   const v=stage.querySelector('.layer.show video');
   if(paused){clearTimeout(timer);remain-=performance.now()-startedAt;if(v)v.pause();toast('一時停止');}
   else{startedAt=performance.now();timer=setTimeout(()=>advance(1),Math.max(0,remain));if(v)v.play().catch(()=>{});toast('再生');}
-  $('#aPause').textContent=paused?'▶︎':'⏸';
+  $('#aPause').textContent=paused?'▶︎':'⏸';reportStatus();
 }
 function startPlayback(fs){
   $('#boot').style.display='none';playing=true;paused=false;
@@ -484,7 +499,7 @@ function startPlayback(fs){
   log('再生開始');
   setTimeout(()=>toast('管理画面：左上の角を2秒長押し',4000),1200);
 }
-function stopPlayback(){clearTimeout(timer);playing=false;paused=false;sleeping=false;clear();$('#empty').hidden=true;$('#boot').style.display='';$('#widgets').classList.add('off');log('開始画面に戻りました');}
+function stopPlayback(){clearTimeout(timer);playing=false;blackout=false;paused=false;sleeping=false;clear();$('#empty').hidden=true;$('#boot').style.display='';$('#widgets').classList.add('off');log('開始画面に戻りました');}
 function enterFS(){const d=document.documentElement;if(isStandalone||!(d.requestFullscreen||d.webkitRequestFullscreen))return;try{const p=(d.requestFullscreen||d.webkitRequestFullscreen).call(d);if(p&&p.catch)p.catch(()=>toast('全画面にできませんでした'));}catch(e){toast('全画面にできませんでした');}}
 function toggleFS(){if(document.fullscreenElement||document.webkitFullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen).call(document);}else enterFS();}
 
@@ -514,7 +529,7 @@ function place(el,w){el.style.left=w.x+'%';el.style.top=w.y+'%';el.style.width=w
 function applyOverlays(){
   ensureLayout();
   const box=$('#widgets');
-  box.classList.toggle('off',!playing||sleeping);
+  box.classList.toggle('off',!playing||sleeping||blackout);
   const main=S.layout.find(w=>w.type==='main');
   const ci=playing&&cur?cur:null,hide=(ci&&ci.hide)||[];
   place(stage,ci&&ci.full?{x:0,y:0,w:100,h:100}:main);
@@ -585,6 +600,65 @@ setInterval(()=>{
 },20000);
 // watchdog: if timer was lost (e.g. tab throttled), recover
 setInterval(()=>{if(playing&&!paused&&!sleeping&&cur&&curDur&&performance.now()-startedAt>curDur+15000){log('ウォッチドッグ: 再生を復旧');advance(1);}},10000);
+
+/* ---------- 遠隔操作（サーバーモード） ---------- */
+function setBlackout(on){
+  blackout=!!on;
+  if(blackout){clearTimeout(timer);stage.querySelectorAll('.layer').forEach(l=>{const v=l.querySelector('video');if(v)v.pause();l.remove();});cur=null;$('#empty').hidden=true;applyOverlays();log('遠隔操作: 黒画面');}
+  else{log('遠隔操作: 黒画面を解除');applyOverlays();if(playing)advance(1);}
+  reportStatus();
+}
+let stT=null;
+function reportStatus(){
+  if(!SERVER||EDITOR)return;clearTimeout(stT);
+  stT=setTimeout(()=>{fetch('/api/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    ver:APP_VERSION,playing,paused,sleeping,blackout,cur:cur?{id:cur.id,name:cur.name,type:cur.type}:null,
+    w:window.innerWidth,h:window.innerHeight})}).catch(()=>{});},150);
+}
+function handleCmd(c){
+  if(EDITOR)return;
+  if(c.cmd==='reload'){location.reload();return;}
+  if(c.cmd==='black'){setBlackout(true);return;}
+  if(c.cmd==='unblack'){setBlackout(false);return;}
+  if(!playing)startPlayback(false);
+  if(blackout&&c.cmd!=='pause')setBlackout(false);
+  if(c.cmd==='next')advance(1);
+  else if(c.cmd==='prev')advance(-1);
+  else if(c.cmd==='pause'){if(!paused)togglePause();}
+  else if(c.cmd==='resume'){if(paused)togglePause();}
+  else if(c.cmd==='toggle')togglePause();
+  else if(c.cmd==='goto'){const it=items.find(i=>i.id===c.id);if(it){if(paused)togglePause();show(it);}}
+  reportStatus();
+}
+async function loadServerState(){
+  const st=await fetch('/api/state',{cache:'no-store'}).then(r=>r.json());
+  if(st.settings)S={...DEFAULT_SETTINGS,...st.settings};
+  items=Array.isArray(st.items)?st.items:null;
+  ensureLayout();
+  for(const it of [...(items||[]),...S.layout])if(it.mediaId)setURL(it.mediaId);
+}
+async function syncFromServer(){
+  const prev=cur?JSON.stringify(cur):null;
+  try{await loadServerState();}catch(e){log('同期失敗 '+e.message);return;}
+  if(!items)items=[];
+  log('別の端末で内容が変更されました');
+  if($('#admin').classList.contains('on')){renderItems();renderSettings();if($('#tab-lay').classList.contains('on'))renderLayout();}
+  applyOverlays();
+  if(playing&&!sleeping&&!blackout){
+    const n=cur&&items.find(i=>i.id===cur.id);
+    if(!cur||!n||!isActive(n))advance(1);
+    else if(JSON.stringify(n)!==prev)show(n);
+    else cur=n;
+  }
+  reportStatus();
+}
+function connectEvents(){
+  let opened=false;const es=new EventSource('/api/events');
+  es.addEventListener('state',e=>{const d=JSON.parse(e.data);if(d.origin!==CLIENT_ID)syncFromServer();});
+  es.addEventListener('cmd',e=>handleCmd(JSON.parse(e.data)));
+  es.onopen=()=>{if(opened)syncFromServer();opened=true;reportStatus();};
+}
+function remoteURLs(){return SERVER?SERVER.ips.map(ip=>`http://${ip}:${SERVER.port}/remote`):[];}
 
 /* ---------- touch navigation (swipe / tap) ---------- */
 let tp=null;
@@ -699,7 +773,7 @@ async function dropWidgetMedia(mid){if(S.layout.some(x=>x.mediaId===mid)||items.
 let imgTarget=null;
 $('#wImgIn').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f||!imgTarget)return;const mid=uid();
   try{await blobSet(mid,f);}catch(err){toast('画像を保存できませんでした');return;}
-  urls[mid]=URL.createObjectURL(f);const old=imgTarget.mediaId;imgTarget.mediaId=mid;if(old)dropWidgetMedia(old);save();applyOverlays();renderLayout();};
+  setURL(mid,f);const old=imgTarget.mediaId;imgTarget.mediaId=mid;if(old)dropWidgetMedia(old);save();applyOverlays();renderLayout();};
 $$('[data-add]').forEach(b=>b.onclick=()=>{
   const t=b.dataset.add;ensureLayout();
   if((t==='clock'||t==='ticker')&&S.layout.some(w=>w.type===t)){toast(WNAME[t]+'はすでに配置されています');return;}
@@ -806,7 +880,7 @@ async function addFiles(files){
     if(!type){toast('対応していない形式: '+f.name);continue;}
     const mid=uid();
     try{await blobSet(mid,f);}catch(e){log('保存失敗: '+f.name+' / '+e.message);toast(`保存できませんでした: ${f.name}（${e.message}）`,5000);continue;}
-    urls[mid]=URL.createObjectURL(await blobGet(mid)||f);
+    setURL(mid,SERVER?null:(await blobGet(mid)||f));
     items.push({id:uid(),type,name:f.name.replace(/\.[^.]+$/,''),dur:type==='video'?0:S.dur,enabled:true,days:[0,1,2,3,4,5,6],start:'',end:'',mediaId:mid,sound:false});n++;
   }
   if(n){save();renderItems();toast(`${n}件追加しました`);log(`${n}件のメディアを追加`);if(playing&&!cur&&!sleeping)advance(1);}
@@ -948,7 +1022,7 @@ $('#pIn').onchange=async e=>{
       // 古いメディアのうち不要になるものを削除
       const keep=new Set(man.media.map(m=>m.id));
       for(const id of usedMediaIds())if(!keep.has(id)){await blobDel(id).catch(()=>{});if(urls[id]){URL.revokeObjectURL(urls[id]);delete urls[id];}}
-      for(const id of keep){if(urls[id])URL.revokeObjectURL(urls[id]);const b=await blobGet(id);if(b)urls[id]=URL.createObjectURL(b);}
+      for(const id of keep){if(SERVER){setURL(id);continue;}const b=await blobGet(id);if(b)setURL(id,b);}
       const pin=S.pin;S={...DEFAULT_SETTINGS,...(man.settings||{}),pin};items=man.items;selW=null;
       save();renderItems();renderSettings();applyOverlays();if($('#tab-lay').classList.contains('on'))renderLayout();
       info.textContent=`読み込み完了：項目${items.length}件・メディア${man.media.length}件`;log('まとめファイルを読み込み '+f.name);toast('読み込みました');
@@ -977,12 +1051,28 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){
 $('#bAdmin').onclick=()=>openAdmin();
 
 (async()=>{
+  if(location.protocol==='http:'||location.protocol==='https:'){try{const r=await fetch('/api/info',{cache:'no-store'});if(r.ok&&(r.headers.get('content-type')||'').includes('json'))SERVER=await r.json();}catch(e){}}
+  if(SERVER){
+    try{await loadServerState();}catch(e){log('サーバーから読み込めません '+e.message);}
+    if(!items){items=demoItems();save();}
+    connectEvents();
+    const u=remoteURLs();
+    $('#ver').textContent='v'+APP_VERSION+(EDITOR?'（詳細設定・スマホ）':'（Raspberry Pi）');
+    $('#autostartNote').innerHTML=u.length?'スマホで操作：<b>'+u.map(esc).join('</b> / <b>')+'</b>':'スマホで操作：http://（PiのIPアドレス）:'+SERVER.port+'/remote';
+    $('#srvInfo').hidden=false;$('#srvInfo').innerHTML='<b>Raspberry Pi サーバーに保存中</b><br>スマホの操作画面：'+(u.map(x=>`<code>${esc(x)}</code>`).join(' ／ ')||'（IP不明）');
+    applyOverlays();
+    log(`起動（項目 ${items.length} 件 / 保存先 Raspberry Pi）`);
+    if(EDITOR){$('#aClose').textContent='この端末でプレビュー';$('#bStart').textContent='▶ この端末でプレビュー';openAdmin();}
+    else{setTimeout(()=>{if($('#boot').style.display!=='none')startPlayback(false);if(u[0])setTimeout(()=>toast('スマホで操作：'+u[0],8000),2500);},4000);}
+    setInterval(reportStatus,5000);
+    return;
+  }
   await openDB();
   try{const s=await kvGet('settings');if(s)S={...DEFAULT_SETTINGS,...s};}catch(e){}
   let stored=null;try{stored=await kvGet('items');}catch(e){}
   if(Array.isArray(stored))items=stored;else{items=demoItems();save();}
   ensureLayout();
-  for(const it of [...items,...S.layout]){if(it.mediaId&&!urls[it.mediaId]){try{const b=await blobGet(it.mediaId);if(b)urls[it.mediaId]=URL.createObjectURL(b);else log('メディアが見つかりません: '+(it.name||'レイアウト画像'));}catch(e){}}}
+  for(const it of [...items,...S.layout]){if(it.mediaId&&!urls[it.mediaId]){try{const b=await blobGet(it.mediaId);if(b)setURL(it.mediaId,b);else log('メディアが見つかりません: '+(it.name||'レイアウト画像'));}catch(e){}}}
   if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
   applyOverlays();
   log(`起動（項目 ${items.length} 件 / 保存先 ${db?'IndexedDB':'メモリ'}）`);

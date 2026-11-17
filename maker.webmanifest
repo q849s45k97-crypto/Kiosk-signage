@@ -1,0 +1,14 @@
+{
+  "name": "サイネージ画像メーカー",
+  "short_name": "画像メーカー",
+  "lang": "ja",
+  "start_url": "./maker.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0d10",
+  "theme_color": "#14171c",
+  "icons": [
+    { "src": "icons/maker-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/maker-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>サイネージ画像メーカー</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="画像メーカー">
+<meta name="theme-color" content="#14171c">
+<link rel="manifest" href="./maker.webmanifest">
+<link rel="apple-touch-icon" href="./icons/maker-touch-icon.png">
+<style>
+:root{--bg:#0b0d10;--panel:#14171c;--panel2:#0f1216;--line:#262b33;--fg:#e9edf2;--mut:#8a94a3;--acc:#3ddc97;--warn:#ff6b5b;
+  --sat:env(safe-area-inset-top,0px);--sar:env(safe-area-inset-right,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);
+  --sans:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:var(--sans);overflow:hidden;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+body{display:grid;grid-template-rows:auto 1fr;padding:var(--sat) var(--sar) var(--sab) var(--sal)}
+button,select,input,textarea{font:inherit}
+button{font-size:14px;font-weight:700;border:1px solid var(--line);background:#1b1f26;color:var(--fg);border-radius:9px;padding:7px 11px;min-height:38px;cursor:pointer;touch-action:manipulation;white-space:nowrap}
+button:hover{border-color:#3a414c}
+button:disabled{opacity:.35;cursor:default}
+button.pri{background:var(--acc);color:#04130c;border-color:var(--acc)}
+button.dan{color:var(--warn)}
+button.ic{min-width:40px;padding:6px 8px;font-size:17px}
+button.on{border-color:var(--acc);color:var(--acc)}
+header{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel);overflow-x:auto;-webkit-overflow-scrolling:touch}
+header .sep{width:1px;height:26px;background:var(--line);flex:none;margin:0 2px}
+#pname{background:transparent;border:1px solid transparent;color:var(--fg);font-size:15px;font-weight:900;padding:6px 8px;border-radius:8px;width:170px;min-width:110px}
+#pname:focus{border-color:var(--line);background:var(--panel2);outline:none}
+main{display:grid;grid-template-columns:minmax(0,1fr) 300px;min-height:0}
+#wrap{position:relative;overflow:auto;-webkit-overflow-scrolling:touch;background:#07080a;
+  background-image:linear-gradient(45deg,#0c0e11 25%,transparent 25%),linear-gradient(-45deg,#0c0e11 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#0c0e11 75%),linear-gradient(-45deg,transparent 75%,#0c0e11 75%);
+  background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0}
+#inner{display:flex;align-items:center;justify-content:center;min-width:100%;min-height:100%;padding:24px}
+#cv{display:block;box-shadow:0 6px 30px rgba(0,0,0,.6);touch-action:none;flex:none}
+#zoom{position:absolute;right:12px;bottom:12px;display:flex;gap:4px;background:rgba(20,23,28,.9);border:1px solid var(--line);border-radius:11px;padding:4px;align-items:center}
+#zoom span{font-size:12px;color:var(--mut);min-width:44px;text-align:center}
+aside{background:var(--panel);border-left:1px solid var(--line);overflow:auto;-webkit-overflow-scrolling:touch;padding:12px;display:flex;flex-direction:column;gap:14px}
+.sec h3{font-size:11px;letter-spacing:.14em;color:var(--acc);margin-bottom:8px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.f{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mut)}
+.f.row{flex-direction:row;align-items:center;justify-content:space-between;gap:8px;font-size:13px;color:var(--fg)}
+input[type=number],input[type=text],select,textarea{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:6px 7px;font-size:16px;width:100%;min-width:0}
+textarea{min-height:90px;resize:vertical;line-height:1.5}
+input[type=color]{width:44px;height:34px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:2px;flex:none}
+input[type=range]{width:100%;accent-color:var(--acc)}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--acc)}
+.seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{flex:1;border:0;border-radius:0;min-height:34px;background:var(--panel2);font-size:13px}
+.seg button.on{background:#25303a;color:var(--acc)}
+.layers{display:flex;flex-direction:column;gap:3px;max-height:34vh;overflow:auto;-webkit-overflow-scrolling:touch}
+.lyh{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.lyh span{font-size:12px;color:var(--mut)}
+.ly{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 8px;border-radius:8px;border:1px solid transparent;cursor:pointer;font-size:13px}
+.ly.sel{border-color:var(--acc);background:#16241e}
+.ly .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ly.hid .nm{opacity:.4;text-decoration:line-through}
+.ly button{min-height:30px;padding:2px 7px;font-size:12px}
+.ly i{font-style:normal;width:18px;text-align:center;color:var(--mut)}
+.hint{font-size:12px;color:var(--mut);line-height:1.7}
+.menu{position:relative}
+.dd{position:fixed;top:0;left:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;display:none;flex-direction:column;gap:4px;z-index:30;min-width:170px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.dd.on{display:flex}
+.dd button{text-align:left;border:0;background:transparent}
+.dd button:hover{background:#1b1f26}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+#modal.on{display:flex}
+.mbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:min(760px,100%);max-height:90vh;overflow:auto;padding:18px}
+.mbox h2{font-size:16px;margin-bottom:12px}
+.mbox footer{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap}
+.plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.pc{background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer}
+.pc.cur{border-color:var(--acc)}
+.pc img{width:100%;aspect-ratio:16/10;object-fit:contain;background:#000;display:block}
+.pc div{padding:6px 8px;font-size:12px}
+.pc b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc .acts{display:flex;gap:4px;padding:0 6px 6px}
+.pc .acts button{flex:1;min-height:30px;font-size:12px;padding:2px}
+.sizes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.sizes button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;min-height:0}
+.sizes i{display:block;background:#2b333d;border-radius:3px}
+.sizes span{font-size:11px;color:var(--mut);font-weight:400}
+#toast{position:fixed;left:50%;bottom:calc(24px + var(--sab));transform:translateX(-50%);background:#1b1f26;border:1px solid var(--line);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:60;max-width:90vw;text-align:center}
+#toast.on{opacity:1}
+@media (max-width:900px){
+  main{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) minmax(0,42vh)}
+  aside{border-left:0;border-top:1px solid var(--line)}
+  #pname{width:120px}
+  header .lbl{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="menu"><button id="mFile">☰ <span class="lbl">ファイル</span></button>
+    <div class="dd" id="ddFile">
+      <button data-a="new">新規作成…</button>
+      <button data-a="open">開く…</button>
+      <button data-a="dup">このデザインを複製</button>
+      <button data-a="exportJson">デザインをファイルに保存</button>
+      <button data-a="importJson">デザインファイルを読み込む</button>
+    </div>
+  </div>
+  <button id="bNew">＋ <span class="lbl">新規作成</span></button>
+  <input id="pname" value="無題" aria-label="デザイン名">
+  <div class="sep"></div>
+  <button class="ic" id="bUndo" title="元に戻す" aria-label="元に戻す">↶</button>
+  <button class="ic" id="bRedo" title="やり直し" aria-label="やり直し">↷</button>
+  <div class="sep"></div>
+  <button id="aText">T <span class="lbl">テキスト</span></button>
+  <button id="aImage">🖼 <span class="lbl">画像</span></button>
+  <div class="menu"><button id="mShape">◆ <span class="lbl">図形</span></button>
+    <div class="dd" id="ddShape">
+      <button data-s="rect">▭ 四角形</button>
+      <button data-s="round">▢ 角丸四角形</button>
+      <button data-s="ellipse">◯ 円</button>
+      <button data-s="triangle">△ 三角形</button>
+      <button data-s="line">― 線</button>
+      <button data-s="arrow">→ 矢印</button>
+    </div>
+  </div>
+  <span style="flex:1"></span>
+  <button class="pri" id="bExport">画像に書き出す</button>
+  <input type="file" id="fImg" accept="image/*" hidden>
+  <input type="file" id="fBg" accept="image/*" hidden>
+  <input type="file" id="fJson" accept=".json,application/json" hidden>
+</header>
+<main>
+  <div id="wrap"><div id="inner"><canvas id="cv"></canvas></div>
+    <div id="zoom"><button class="ic" id="zOut" aria-label="縮小">−</button><span id="zLbl">100%</span><button class="ic" id="zIn" aria-label="拡大">＋</button><button id="zFit">全体</button></div>
+  </div>
+  <aside id="panel"></aside>
+</main>
+<div id="modal"><div class="mbox" id="mbox"></div></div>
+<div id="toast"></div>
+
+<script>
+(()=>{
+"use strict";
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m,ms){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),ms||2200);}
+
+const FONTS={
+  sans:{n:'ゴシック',f:'-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",Meiryo,sans-serif'},
+  maru:{n:'丸ゴシック',f:'"Hiragino Maru Gothic ProN","Hiragino Maru Gothic Pro","Kosugi Maru","M PLUS Rounded 1c","Hiragino Sans",sans-serif'},
+  serif:{n:'明朝',f:'"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP","MS PMincho",serif'},
+  mono:{n:'等幅',f:'ui-monospace,"SF Mono",Menlo,Consolas,monospace'}};
+const SIZES=[
+  {n:'16:9 横（フルHD）',w:1920,h:1080},{n:'16:9 縦',w:1080,h:1920},
+  {n:'4:3 横（iPad）',w:2048,h:1536},{n:'4:3 縦（iPad）',w:1536,h:2048},
+  {n:'iPad Pro 11 横',w:2388,h:1668},{n:'正方形',w:1080,h:1080}];
+const TYPE_NAME={text:'テキスト',image:'画像',rect:'四角形',ellipse:'円',triangle:'三角形',line:'線'};
+const TYPE_IC={text:'T',image:'🖼',rect:'▭',ellipse:'◯',triangle:'△',line:'―'};
+
+/* ================= document ================= */
+function newDoc(w,h){return {id:uid(),name:'無題',w,h,bg:'#ffffff',bgAsset:null,els:[],assets:{},created:Date.now(),updated:Date.now()};}
+let doc=newDoc(1920,1080),sel=null;
+const byId=id=>doc.els.find(e=>e.id===id);
+const selEl=()=>sel?byId(sel):null;
+
+/* ---- image assets ---- */
+const imgCache={};
+function getImg(aid){
+  if(!aid||!doc.assets[aid])return null;
+  let c=imgCache[aid];
+  if(!c||c.src!==doc.assets[aid]){c=new Image();c.onload=()=>draw();c.src=doc.assets[aid];imgCache[aid]=c;}
+  return c.complete&&c.naturalWidth?c:null;
+}
+function waitImages(d){return Promise.all(Object.keys(d.assets).map(aid=>new Promise(r=>{let c=imgCache[aid];if(!c||c.src!==d.assets[aid]){c=new Image();c.src=d.assets[aid];imgCache[aid]=c;}if(c.complete&&c.naturalWidth)r();else{c.onload=c.onerror=()=>r();}})));}
+function fileToAsset(file,maxSide){
+  return new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=()=>rej(new Error('読み込めません'));
+    fr.onload=()=>{const im=new Image();im.onerror=()=>rej(new Error('画像として開けません'));
+      im.onload=()=>{let w=im.naturalWidth,h=im.naturalHeight;const k=Math.min(1,maxSide/Math.max(w,h));
+        if(k>=1&&file.size<4e6){res({src:fr.result,w,h});return;}
+        w=Math.round(w*k);h=Math.round(h*k);const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);
+        const png=/png|gif|webp|svg/.test(file.type);res({src:c.toDataURL(png?'image/png':'image/jpeg',.9),w,h});};
+      im.src=fr.result;};fr.readAsDataURL(file);});
+}
+
+/* ================= rendering ================= */
+function fontOf(e){return `${e.weight||700} ${e.size}px ${(FONTS[e.font]||FONTS.sans).f}`;}
+const NO_START='、。，．,.・：；？！?!」』）)】〉》ー〜ぁぃぅぇぉっゃゅょァィゥェォッャュョ';
+function wrapText(ctx,e){
+  ctx.font=fontOf(e);const max=Math.max(1,e.w),out=[];
+  for(const para of String(e.text||'').split('\n')){
+    if(!para){out.push('');continue;}
+    let line='';
+    for(const ch of para){
+      const t=line+ch;
+      if(line&&ctx.measureText(t).width>max){
+        if(NO_START.includes(ch)){line=t;continue;}       // 行頭禁則：句読点は前の行にぶら下げ
+        const m=line.match(/^(.*[^A-Za-z0-9])([A-Za-z0-9]+)$/);   // 英単語は途中で切らない
+        if(/[A-Za-z0-9]/.test(ch)&&m&&m[1]){out.push(m[1]);line=m[2]+ch;}
+        else{out.push(line);line=ch;}
+      }else line=t;
+    }
+    out.push(line);
+  }
+  return out;
+}
+function textHeight(e){return Math.max(1,e._lines?e._lines.length:1)*e.size*(e.lh||1.3);}
+const mctx=document.createElement('canvas').getContext('2d');
+function relayout(e){if(e.type!=='text')return;e._lines=wrapText(mctx,e);e.h=Math.round(textHeight(e));}
+function rr(ctx,x,y,w,h,r){r=Math.max(0,Math.min(r||0,Math.abs(w)/2,Math.abs(h)/2));ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+function setShadow(ctx,e){if(e.shadow){const k=Math.max(doc.w,doc.h)/1920;ctx.shadowColor='rgba(0,0,0,.38)';ctx.shadowBlur=24*k;ctx.shadowOffsetY=8*k;}}
+function arrowHead(ctx,x1,y1,x2,y2,sw){const a=Math.atan2(y2-y1,x2-x1),L=Math.max(14,sw*3.2),W=Math.max(10,sw*2.4);
+  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-L*Math.cos(a)+W/2*Math.sin(a),y2-L*Math.sin(a)-W/2*Math.cos(a));ctx.lineTo(x2-L*Math.cos(a)-W/2*Math.sin(a),y2-L*Math.sin(a)+W/2*Math.cos(a));ctx.closePath();ctx.fill();}
+function render(ctx,d){
+  ctx.save();ctx.fillStyle=d.bg||'#fff';ctx.fillRect(0,0,d.w,d.h);
+  const bi=getImg(d.bgAsset);
+  if(bi){const k=Math.max(d.w/bi.naturalWidth,d.h/bi.naturalHeight),w=bi.naturalWidth*k,h=bi.naturalHeight*k;ctx.drawImage(bi,(d.w-w)/2,(d.h-h)/2,w,h);}
+  ctx.restore();
+  for(const e of d.els){
+    if(e.hidden)continue;
+    ctx.save();ctx.globalAlpha=e.op==null?1:e.op;
+    if(e.type==='line'){
+      setShadow(ctx,e);ctx.strokeStyle=ctx.fillStyle=e.stroke||'#000';ctx.lineWidth=e.sw||6;ctx.lineCap='round';
+      if(e.dash)ctx.setLineDash([e.sw*2.5,e.sw*2]);
+      const sh=e.arrow?Math.max(14,e.sw*3.2)*.85:0,a=Math.atan2(e.y2-e.y1,e.x2-e.x1);
+      const ex=e.x2-(e.arrow?Math.cos(a)*sh:0),ey=e.y2-(e.arrow?Math.sin(a)*sh:0);
+      const sx=e.x1+(e.arrow===2?Math.cos(a)*sh:0),sy=e.y1+(e.arrow===2?Math.sin(a)*sh:0);
+      ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);ctx.stroke();ctx.setLineDash([]);
+      if(e.arrow)arrowHead(ctx,e.x1,e.y1,e.x2,e.y2,e.sw);
+      if(e.arrow===2)arrowHead(ctx,e.x2,e.y2,e.x1,e.y1,e.sw);
+      ctx.restore();continue;
+    }
+    const cx=e.x+e.w/2,cy=e.y+e.h/2;ctx.translate(cx,cy);if(e.rot)ctx.rotate(e.rot*Math.PI/180);
+    const x=-e.w/2,y=-e.h/2;
+    if(e.type==='rect'||e.type==='ellipse'||e.type==='triangle'){
+      if(e.type==='rect')rr(ctx,x,y,e.w,e.h,e.radius||0);
+      else if(e.type==='ellipse'){ctx.beginPath();ctx.ellipse(0,0,Math.abs(e.w/2),Math.abs(e.h/2),0,0,Math.PI*2);}
+      else{ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(e.w/2,e.h/2);ctx.lineTo(x,e.h/2);ctx.closePath();}
+      setShadow(ctx,e);
+      if(e.fill){ctx.fillStyle=e.fill;ctx.fill();ctx.shadowColor='transparent';}
+      if(e.sw>0){ctx.strokeStyle=e.stroke||'#000';ctx.lineWidth=e.sw;ctx.lineJoin='round';ctx.stroke();}
+    }else if(e.type==='image'){
+      const im=getImg(e.asset);setShadow(ctx,e);
+      if(e.radius){rr(ctx,x,y,e.w,e.h,e.radius);if(e.shadow){ctx.fillStyle='#000';ctx.fill();ctx.shadowColor='transparent';}ctx.clip();}
+      if(im)ctx.drawImage(im,x,y,e.w,e.h);else{ctx.fillStyle='#ccc';ctx.fillRect(x,y,e.w,e.h);}
+    }else if(e.type==='text'){
+      if(!e._lines)relayout(e);
+      ctx.font=fontOf(e);ctx.textBaseline='top';
+      const lh=e.size*(e.lh||1.3),off=(lh-e.size)/2;
+      const ax=e.align==='center'?0:e.align==='right'?e.w/2:x;ctx.textAlign=e.align||'left';
+      setShadow(ctx,e);
+      e._lines.forEach((ln,i)=>{const ty=y+i*lh+off;
+        if(e.outline>0){ctx.save();ctx.shadowColor='transparent';ctx.strokeStyle=e.outlineColor||'#fff';ctx.lineWidth=e.outline*2;ctx.lineJoin='round';ctx.strokeText(ln,ax,ty);ctx.restore();}
+        ctx.fillStyle=e.color||'#000';ctx.fillText(ln,ax,ty);});
+    }
+    ctx.restore();
+  }
+}
+
+/* ================= view ================= */
+const cv=$('#cv'),ctx=cv.getContext('2d');
+let scale=.5,fitMode=true,guides=[];
+const DPR=()=>Math.min(2,window.devicePixelRatio||1);
+function fit(){const w=$('#wrap');scale=Math.max(.05,Math.min((w.clientWidth-48)/doc.w,(w.clientHeight-48)/doc.h));fitMode=true;sizeCanvas();}
+function sizeCanvas(){const r=DPR();cv.style.width=Math.round(doc.w*scale)+'px';cv.style.height=Math.round(doc.h*scale)+'px';
+  cv.width=Math.round(doc.w*scale*r);cv.height=Math.round(doc.h*scale*r);$('#zLbl').textContent=Math.round(scale*100)+'%';draw();}
+function setZoom(z){scale=clamp(z,.05,4);fitMode=false;sizeCanvas();}
+$('#zIn').onclick=()=>setZoom(scale*1.25);
+$('#zOut').onclick=()=>setZoom(scale/1.25);
+$('#zFit').onclick=fit;
+window.addEventListener('resize',()=>{if(fitMode)fit();});
+// ピンチ操作（Mac のトラックパッド / iPad）はページ全体ではなくキャンバスだけを拡大縮小する
+function zoomAt(z,cx,cy){const w=$('#wrap'),r=cv.getBoundingClientRect(),dx=(cx-r.left)/scale,dy=(cy-r.top)/scale;setZoom(z);
+  const r2=cv.getBoundingClientRect();w.scrollLeft+=r2.left+dx*scale-cx;w.scrollTop+=r2.top+dy*scale-cy;}
+$('#wrap').addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();zoomAt(scale*Math.exp(clamp(-e.deltaY,-25,25)*0.01),e.clientX,e.clientY);}},{passive:false});
+let gBase=1;
+document.addEventListener('gesturestart',e=>{e.preventDefault();gBase=scale;},{passive:false});
+document.addEventListener('gesturechange',e=>{e.preventDefault();const r=$('#wrap').getBoundingClientRect();zoomAt(gBase*e.scale,e.clientX||r.left+r.width/2,e.clientY||r.top+r.height/2);},{passive:false});
+document.addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&['+','=','-','0',';'].includes(e.key)){e.preventDefault();if(e.key==='0')fit();else setZoom(scale*(e.key==='-'?1/1.25:1.25));}});
+let raf=0;
+function draw(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;
+  const r=DPR();ctx.setTransform(scale*r,0,0,scale*r,0,0);ctx.clearRect(0,0,doc.w,doc.h);render(ctx,doc);drawOverlay();});}
+const HS=()=>11/scale;   // handle size in doc px
+function corners(e){const c=[e.x+e.w/2,e.y+e.h/2],a=(e.rot||0)*Math.PI/180,co=Math.cos(a),si=Math.sin(a);
+  const P=(lx,ly)=>[c[0]+lx*co-ly*si,c[1]+lx*si+ly*co];return {P,c,a};}
+function drawOverlay(){
+  const e=selEl();const s=scale;
+  ctx.save();ctx.lineWidth=1.5/s;
+  for(const g of guides){ctx.strokeStyle='#ff3fa4';ctx.beginPath();if(g.x!=null){ctx.moveTo(g.x,0);ctx.lineTo(g.x,doc.h);}else{ctx.moveTo(0,g.y);ctx.lineTo(doc.w,g.y);}ctx.stroke();}
+  if(e&&!e.hidden){
+    ctx.strokeStyle='#2f9bff';ctx.fillStyle='#fff';
+    if(e.type==='line'){
+      ctx.setLineDash([5/s,4/s]);ctx.beginPath();ctx.moveTo(e.x1,e.y1);ctx.lineTo(e.x2,e.y2);ctx.stroke();ctx.setLineDash([]);
+      for(const [x,y] of [[e.x1,e.y1],[e.x2,e.y2]]){ctx.beginPath();ctx.arc(x,y,HS()*.6,0,Math.PI*2);ctx.fill();ctx.stroke();}
+    }else{
+      const {P}=corners(e),w=e.w/2,h=e.h/2;
+      const pts=[P(-w,-h),P(w,-h),P(w,h),P(-w,h)];
+      ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.stroke();
+      const top=P(0,-h),rot=P(0,-h-34/s);ctx.beginPath();ctx.moveTo(top[0],top[1]);ctx.lineTo(rot[0],rot[1]);ctx.stroke();
+      ctx.beginPath();ctx.arc(rot[0],rot[1],HS()*.6,0,Math.PI*2);ctx.fill();ctx.stroke();
+      const hs=HS();for(const p of pts){ctx.fillRect(p[0]-hs/2,p[1]-hs/2,hs,hs);ctx.strokeRect(p[0]-hs/2,p[1]-hs/2,hs,hs);}
+    }
+  }
+  ctx.restore();
+}
+
+/* ================= hit testing ================= */
+function toLocal(e,px,py){const {c,a}=corners(e),dx=px-c[0],dy=py-c[1],co=Math.cos(-a),si=Math.sin(-a);return [dx*co-dy*si,dx*si+dy*co];}
+function segDist(px,py,x1,y1,x2,y2){const vx=x2-x1,vy=y2-y1,l=vx*vx+vy*vy||1,t=clamp(((px-x1)*vx+(py-y1)*vy)/l,0,1);return Math.hypot(px-(x1+t*vx),py-(y1+t*vy));}
+function hitAll(px,py){const out=[];for(let i=doc.els.length-1;i>=0;i--){const e=doc.els[i];if(e.hidden||e.locked)continue;
+  if(e.type==='line'){if(segDist(px,py,e.x1,e.y1,e.x2,e.y2)<=Math.max(e.sw/2,14/scale))out.push(e);continue;}
+  const [lx,ly]=toLocal(e,px,py);if(Math.abs(lx)<=e.w/2&&Math.abs(ly)<=e.h/2)out.push(e);}return out;}
+function hitEl(px,py){
+  for(let i=doc.els.length-1;i>=0;i--){const e=doc.els[i];if(e.hidden||e.locked)continue;
+    if(e.type==='line'){if(segDist(px,py,e.x1,e.y1,e.x2,e.y2)<=Math.max(e.sw/2,14/scale))return e;continue;}
+    const [lx,ly]=toLocal(e,px,py);if(Math.abs(lx)<=e.w/2&&Math.abs(ly)<=e.h/2)return e;}
+  return null;
+}
+function hitHandle(e,px,py){
+  const r=HS()*1.1;
+  if(e.type==='line'){if(Math.hypot(px-e.x1,py-e.y1)<=r)return{k:'p1'};if(Math.hypot(px-e.x2,py-e.y2)<=r)return{k:'p2'};return null;}
+  const [lx,ly]=toLocal(e,px,py),w=e.w/2,h=e.h/2;
+  if(Math.hypot(lx,ly+h+34/scale)<=r)return{k:'rot'};
+  for(const sx of[-1,1])for(const sy of[-1,1])if(Math.abs(lx-sx*w)<=r&&Math.abs(ly-sy*h)<=r)return{k:'size',sx,sy};
+  return null;
+}
+
+/* ================= history ================= */
+let hist=[],hi=-1;
+const snap=()=>JSON.stringify({w:doc.w,h:doc.h,bg:doc.bg,bgAsset:doc.bgAsset,els:doc.els.map(e=>{const o={...e};delete o._lines;return o;})});
+function commit(){const s=snap();if(hist[hi]===s)return;hist=hist.slice(0,hi+1);hist.push(s);if(hist.length>120)hist.shift();hi=hist.length-1;updUndo();scheduleSave();}
+function restore(s){const o=JSON.parse(s);Object.assign(doc,{w:o.w,h:o.h,bg:o.bg,bgAsset:o.bgAsset,els:o.els});doc.els.forEach(relayout);if(sel&&!byId(sel))sel=null;
+  if(fitMode)fit();else sizeCanvas();renderPanel();scheduleSave();}
+function undo(){if(hi>0){hi--;restore(hist[hi]);updUndo();}}
+function redo(){if(hi<hist.length-1){hi++;restore(hist[hi]);updUndo();}}
+function updUndo(){$('#bUndo').disabled=hi<=0;$('#bRedo').disabled=hi>=hist.length-1;}
+$('#bUndo').onclick=undo;$('#bRedo').onclick=redo;
+
+/* ================= add elements ================= */
+function center(w,h){return {x:Math.round((doc.w-w)/2),y:Math.round((doc.h-h)/2)};}
+const K=()=>Math.max(doc.w,doc.h)/1920;
+function addEl(e){doc.els.push(e);relayout(e);sel=e.id;commit();renderPanel();draw();}
+$('#aText').onclick=()=>{const k=K(),w=Math.round(900*k);addEl({id:uid(),type:'text',...center(w,100*k),w,h:100,text:'テキストを入力',size:Math.round(80*k),weight:700,font:'sans',color:doc.bg&&lum(doc.bg)<.5?'#ffffff':'#1d2733',align:'left',lh:1.3,op:1});setTimeout(()=>{const t=$('#pText');if(t){t.focus();t.select();}},50);};
+function addShape(kind){const k=K();
+  if(kind==='line'||kind==='arrow'){const x1=doc.w/2-300*k,y=doc.h/2;addEl({id:uid(),type:'line',x1,y1:y,x2:x1+600*k,y2:y,stroke:'#1d2733',sw:Math.round(10*k),arrow:kind==='arrow'?1:0,dash:false,op:1});return;}
+  const w=Math.round(500*k),h=kind==='rect'||kind==='round'?Math.round(300*k):w;
+  addEl({id:uid(),type:kind==='round'?'rect':kind,...center(w,h),w,h,fill:'#3ddc97',stroke:'#1d2733',sw:0,radius:kind==='round'?Math.round(40*k):0,rot:0,op:1});}
+$$('#ddShape [data-s]').forEach(b=>b.onclick=()=>{closeMenus();addShape(b.dataset.s);});
+let imgTarget=null;
+$('#aImage').onclick=()=>{imgTarget=null;$('#fImg').click();};
+async function addImageFile(f,replace){
+  try{const a=await fileToAsset(f,Math.max(doc.w,doc.h)*1.5);const aid=uid();doc.assets[aid]=a.src;
+    if(replace){const r=a.w/a.h;replace.asset=aid;replace.h=Math.round(replace.w/r);commit();renderPanel();draw();return;}
+    let w=a.w,h=a.h;const k=Math.min(1,doc.w*.6/w,doc.h*.6/h);w=Math.round(w*k);h=Math.round(h*k);
+    addEl({id:uid(),type:'image',...center(w,h),w,h,asset:aid,radius:0,rot:0,op:1,ratio:a.w/a.h});
+  }catch(e){toast(e.message);}
+}
+$('#fImg').onchange=e=>{const fs=[...e.target.files];e.target.value='';fs.forEach(f=>addImageFile(f,imgTarget));imgTarget=null;};
+$('#fBg').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const a=await fileToAsset(f,Math.max(doc.w,doc.h)*1.25);const aid=uid();doc.assets[aid]=a.src;doc.bgAsset=aid;commit();renderPanel();draw();}catch(err){toast(err.message);}};
+$('#wrap').addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('Files'))e.preventDefault();});
+$('#wrap').addEventListener('drop',e=>{e.preventDefault();[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/')).forEach(f=>addImageFile(f));});
+document.addEventListener('paste',e=>{if(/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;const f=[...(e.clipboardData||{}).items||[]].find(i=>i.type.startsWith('image/'));if(f){e.preventDefault();addImageFile(f.getAsFile());}});
+function lum(hex){const n=parseInt(hex.slice(1),16);return ((n>>16&255)*.299+(n>>8&255)*.587+(n&255)*.114)/255;}
+
+/* ================= pointer interaction ================= */
+let drag=null,lastTap={t:0,id:null};
+function docPt(ev){const r=cv.getBoundingClientRect();return [(ev.clientX-r.left)/scale,(ev.clientY-r.top)/scale];}
+function bbox(e){if(e.type==='line')return{x:Math.min(e.x1,e.x2),y:Math.min(e.y1,e.y2),w:Math.abs(e.x2-e.x1),h:Math.abs(e.y2-e.y1)};
+  if(!e.rot)return{x:e.x,y:e.y,w:e.w,h:e.h};const {P}=corners(e),pts=[P(-e.w/2,-e.h/2),P(e.w/2,-e.h/2),P(e.w/2,e.h/2),P(-e.w/2,e.h/2)];
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);return{x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)};}
+function snapMove(e,dx,dy){
+  const b=bbox(e),th=7/scale;guides=[];
+  const tx=[0,doc.w/2,doc.w],ty=[0,doc.h/2,doc.h];
+  for(const o of doc.els){if(o.id===e.id||o.hidden)continue;const ob=bbox(o);tx.push(ob.x,ob.x+ob.w/2,ob.x+ob.w);ty.push(ob.y,ob.y+ob.h/2,ob.y+ob.h);}
+  const best=(vals,targets)=>{let r=null;for(const v of vals)for(const t of targets){const d=t-v;if(Math.abs(d)<=th&&(!r||Math.abs(d)<Math.abs(r.d)))r={d,t};}return r;};
+  const nx=b.x+dx,ny=b.y+dy;
+  const sx=best([nx,nx+b.w/2,nx+b.w],tx),sy=best([ny,ny+b.h/2,ny+b.h],ty);
+  if(sx){dx+=sx.d;guides.push({x:sx.t});}
+  if(sy){dy+=sy.d;guides.push({y:sy.t});}
+  return [dx,dy];
+}
+cv.addEventListener('pointerdown',ev=>{
+  if(ev.button>0)return;ev.preventDefault();closeMenus();
+  const [px,py]=docPt(ev);let e=selEl(),h=e&&!e.hidden?hitHandle(e,px,py):null;
+  let hits=[],cyc=false;
+  if(!h){hits=hitAll(px,py);
+    if(e&&hits.includes(e))cyc=hits.length>1;        // 選択中の要素の上を押した → そのまま動かせる。動かさずに離すと下の要素へ
+    else e=hits[0]||null;
+    const now=Date.now();
+    if(e&&e.type==='text'&&lastTap.id===e.id&&now-lastTap.t<400){sel=e.id;renderPanel();const t=$('#pText');if(t){t.focus();}lastTap={t:0,id:null};return;}
+    lastTap={t:now,id:e?e.id:null};
+    if(e!==selEl()){sel=e?e.id:null;renderPanel();}
+    if(!e){draw();return;}
+  }
+  cv.setPointerCapture(ev.pointerId);
+  drag={k:h?h.k:'move',sx:h&&h.sx,sy:h&&h.sy,px,py,o:JSON.parse(JSON.stringify(e)),e,moved:false,shift:ev.shiftKey,hits,cyc};
+  draw();
+});
+cv.addEventListener('pointermove',ev=>{
+  if(!drag){const [px,py]=docPt(ev),e=selEl();const h=e&&hitHandle(e,px,py);cv.style.cursor=h?(h.k==='rot'?'grab':h.k==='size'?'nwse-resize':'crosshair'):hitEl(px,py)?'move':'default';return;}
+  const [px,py]=docPt(ev),{e,o}=drag;let dx=px-drag.px,dy=py-drag.py;
+  if(!drag.moved&&Math.hypot(dx,dy)*scale<3)return;drag.moved=true;
+  if(drag.k==='move'){
+    [dx,dy]=snapMove(o,dx,dy);
+    if(e.type==='line'){e.x1=o.x1+dx;e.y1=o.y1+dy;e.x2=o.x2+dx;e.y2=o.y2+dy;}else{e.x=Math.round(o.x+dx);e.y=Math.round(o.y+dy);}
+  }else if(drag.k==='p1'||drag.k==='p2'){
+    let x=px,y=py;const ox=drag.k==='p1'?e.x2:e.x1,oy=drag.k==='p1'?e.y2:e.y1;
+    if(ev.shiftKey||Math.abs(y-oy)*scale<8)y=Math.abs(y-oy)*scale<8?oy:y;      // 水平・垂直に吸着
+    if(Math.abs(x-ox)*scale<8)x=ox;
+    if(drag.k==='p1'){e.x1=x;e.y1=y;}else{e.x2=x;e.y2=y;}
+  }else if(drag.k==='rot'){
+    const c=[o.x+o.w/2,o.y+o.h/2];let a=Math.atan2(py-c[1],px-c[0])*180/Math.PI+90;
+    a=((a%360)+360)%360;if(ev.shiftKey)a=Math.round(a/15)*15;else for(const t of[0,90,180,270,360])if(Math.abs(a-t)<4)a=t%360;
+    e.rot=Math.round(a);
+  }else if(drag.k==='size'){
+    const {sx,sy}=drag,a=(o.rot||0)*Math.PI/180,co=Math.cos(a),si=Math.sin(a);
+    const c=[o.x+o.w/2,o.y+o.h/2],ax=c[0]+(-sx*o.w/2)*co-(-sy*o.h/2)*si,ay=c[1]+(-sx*o.w/2)*si+(-sy*o.h/2)*co;
+    const vx=px-ax,vy=py-ay,lx=vx*co+vy*si,ly=-vx*si+vy*co;
+    let w=Math.max(10,sx*lx),h=Math.max(10,sy*ly);
+    const keep=(e.type==='image'&&!ev.shiftKey)||(e.type!=='image'&&e.type!=='text'&&ev.shiftKey);
+    if(keep){const r=o.w/o.h;if(w/h>r)h=w/r;else w=h*r;}
+    if(e.type==='text'){            // テキストは幅だけ変更（高さは文字量で自動）
+      e.w=Math.round(w);if(sx<0)e.x=Math.round(o.x+o.w-e.w);e.y=o.y;relayout(e);
+    }else{
+      e.w=Math.round(w);e.h=Math.round(h);
+      const ncx=ax+(sx*w/2)*co-(sy*h/2)*si,ncy=ay+(sx*w/2)*si+(sy*h/2)*co;
+      e.x=Math.round(ncx-w/2);e.y=Math.round(ncy-h/2);
+    }
+  }
+  draw();updNums();
+});
+function endDrag(){if(!drag)return;const d=drag,m=d.moved;drag=null;guides=[];
+  if(!m&&d.cyc){const i=d.hits.indexOf(d.e),n=d.hits[(i+1)%d.hits.length];sel=n.id;lastTap={t:0,id:null};renderPanel();toast('下の要素を選択：'+elLabel(n),1200);return;}
+  draw();if(m){commit();renderPanel();}}
+cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
+$('#wrap').addEventListener('pointerdown',ev=>{if(ev.target.id==='inner'||ev.target.id==='wrap'){sel=null;renderPanel();draw();}});
+
+/* keyboard */
+document.addEventListener('keydown',ev=>{
+  const typing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  const mod=ev.metaKey||ev.ctrlKey;
+  if(mod&&ev.key.toLowerCase()==='z'&&!typing){ev.preventDefault();ev.shiftKey?redo():undo();return;}
+  if(mod&&ev.key.toLowerCase()==='y'&&!typing){ev.preventDefault();redo();return;}
+  if(typing)return;
+  const e=selEl();
+  if(mod&&ev.key.toLowerCase()==='d'&&e){ev.preventDefault();duplicate();return;}
+  if(!e)return;
+  if(ev.key==='Delete'||ev.key==='Backspace'){ev.preventDefault();removeSel();return;}
+  if(ev.key==='Escape'){sel=null;renderPanel();draw();return;}
+  const st=ev.shiftKey?10:1,mv={ArrowLeft:[-st,0],ArrowRight:[st,0],ArrowUp:[0,-st],ArrowDown:[0,st]}[ev.key];
+  if(mv){ev.preventDefault();if(e.type==='line'){e.x1+=mv[0];e.x2+=mv[0];e.y1+=mv[1];e.y2+=mv[1];}else{e.x+=mv[0];e.y+=mv[1];}draw();updNums();clearTimeout(e._kt);e._kt=setTimeout(commit,400);}
+});
+function duplicate(){const e=selEl();if(!e)return;const c=JSON.parse(JSON.stringify({...e,_lines:undefined}));c.id=uid();const k=24*K();
+  if(c.type==='line'){c.x1+=k;c.x2+=k;c.y1+=k;c.y2+=k;}else{c.x+=k;c.y+=k;}doc.els.splice(doc.els.indexOf(e)+1,0,c);relayout(c);sel=c.id;commit();renderPanel();draw();}
+function removeSel(){const e=selEl();if(!e)return;doc.els=doc.els.filter(x=>x!==e);sel=null;commit();renderPanel();draw();}
+function order(d){const e=selEl();if(!e)return;const a=doc.els,i=a.indexOf(e);a.splice(i,1);
+  const j=d==='top'?a.length:d==='bottom'?0:clamp(i+d,0,a.length);a.splice(j,0,e);commit();renderPanel();draw();}
+
+/* ================= panel ================= */
+function num(id,label,val,opt){opt=opt||{};return `<label class="f">${label}<input type="number" id="${id}" value="${val}" ${opt.min!=null?`min="${opt.min}"`:''} ${opt.step?`step="${opt.step}"`:''} ${opt.dis?'disabled':''}></label>`;}
+function col(id,val){return `<input type="color" id="${id}" value="${esc(val||'#000000')}">`;}
+function seg(id,opts,cur){return `<div class="seg" id="${id}">${opts.map(([v,t])=>`<button data-v="${v}" class="${String(v)===String(cur)?'on':''}">${t}</button>`).join('')}</div>`;}
+let layersOpen=true;try{layersOpen=localStorage.getItem('makerLayers')!=='0';}catch(e){}
+function renderPanel(){
+  const P=$('#panel'),e=selEl();
+  let h=`<div class="sec"><h3 class="lyh" id="lyToggle">レイヤー（上が手前・${doc.els.length}）<span>${layersOpen?'▲ たたむ':'▼ 開く'}</span></h3>${layersOpen?'<div class="layers" id="layers"></div>':''}</div>`;
+  if(!e){
+    h+=`<div class="sec"><h3>キャンバス</h3>
+      <div class="grid2">${num('cW','幅 px',doc.w,{min:100})}${num('cH','高さ px',doc.h,{min:100})}</div>
+      <label class="f" style="margin-top:6px">サイズを選ぶ<select id="cPreset"><option value="">—</option>${SIZES.map((s,i)=>`<option value="${i}">${s.n}（${s.w}×${s.h}）</option>`).join('')}</select></label></div>
+     <div class="sec"><h3>背景</h3>
+      <div class="f row">背景色 ${col('cBg',doc.bg)}</div>
+      <div class="grid2" style="margin-top:6px"><button id="cBgImg">背景画像を選ぶ</button><button id="cBgDel" ${doc.bgAsset?'':'disabled'}>背景画像を外す</button></div></div>
+     <div class="sec hint">上のボタンでテキスト・画像・図形を追加し、ドラッグで配置します。<br>
+      ・四隅で拡大縮小、上の丸で回転（Shiftで15°刻み）<br>・端や中央、他の要素にぴったり吸着します<br>・テキストはダブルタップで文字の編集へ<br>・ピンチ（または ⌘＋／⌘−）でキャンバスを拡大縮小、⌘0 で全体表示<br>・重なった下の要素は、同じ場所をもう一度タップ（またはレイヤー一覧から選択）<br>・画像はコピー＆ペースト、ドラッグ＆ドロップでも追加できます</div>`;
+  }else{
+    const isLine=e.type==='line';
+    h+=`<div class="sec"><h3>${TYPE_NAME[e.type]}</h3>`;
+    if(!isLine)h+=`<div class="grid">${num('pX','X',Math.round(e.x))}${num('pY','Y',Math.round(e.y))}${num('pW','幅',Math.round(e.w),{min:10})}${num('pH','高さ',Math.round(e.h),{min:10,dis:e.type==='text'})}</div>
+      <div class="grid2" style="margin-top:6px">${num('pRot','回転 °',e.rot||0,{step:1})}<label class="f">不透明度<input type="range" id="pOp" min="0" max="1" step="0.05" value="${e.op==null?1:e.op}"></label></div>`;
+    else h+=`<div class="grid">${num('pX1','始点X',Math.round(e.x1))}${num('pY1','始点Y',Math.round(e.y1))}${num('pX2','終点X',Math.round(e.x2))}${num('pY2','終点Y',Math.round(e.y2))}</div>
+      <label class="f" style="margin-top:6px">不透明度<input type="range" id="pOp" min="0" max="1" step="0.05" value="${e.op==null?1:e.op}"></label>`;
+    h+=`<div class="grid2" style="margin-top:8px"><button id="aCenterH">左右中央</button><button id="aCenterV">上下中央</button></div></div>`;
+    if(e.type==='text'){
+      h+=`<div class="sec"><h3>文字</h3><textarea id="pText">${esc(e.text)}</textarea>
+        <div class="grid2" style="margin-top:6px"><label class="f">書体<select id="pFont">${Object.entries(FONTS).map(([k,v])=>`<option value="${k}" ${e.font===k?'selected':''}>${v.n}</option>`).join('')}</select></label>${num('pSize','大きさ px',e.size,{min:6})}</div>
+        <div style="margin-top:6px">${seg('pWeight',[[400,'標準'],[700,'太字'],[900,'極太']],e.weight||700)}</div>
+        <div style="margin-top:6px">${seg('pAlign',[['left','左揃え'],['center','中央'],['right','右揃え']],e.align||'left')}</div>
+        <div class="grid2" style="margin-top:6px"><div class="f row">文字色 ${col('pColor',e.color)}</div>${num('pLh','行間',e.lh||1.3,{step:0.05,min:.8})}</div>
+        <div class="grid2" style="margin-top:6px"><div class="f row">縁取り ${col('pOutC',e.outlineColor||'#ffffff')}</div>${num('pOut','縁取りの太さ',e.outline||0,{min:0})}</div></div>`;
+    }
+    if(e.type==='rect'||e.type==='ellipse'||e.type==='triangle'){
+      h+=`<div class="sec"><h3>塗り・線</h3>
+        <div class="f row">塗り <span style="display:flex;gap:8px;align-items:center"><label style="font-size:12px;color:var(--mut);display:flex;gap:4px;align-items:center"><input type="checkbox" id="pNoFill" ${e.fill?'':'checked'}>なし</label>${col('pFill',e.fill||'#3ddc97')}</span></div>
+        <div class="grid2" style="margin-top:6px"><div class="f row">線の色 ${col('pStroke',e.stroke)}</div>${num('pSw','線の太さ',e.sw||0,{min:0})}</div>
+        ${e.type==='rect'?`<div style="margin-top:6px">${num('pRad','角の丸み',e.radius||0,{min:0})}</div>`:''}</div>`;
+    }
+    if(e.type==='image'){
+      h+=`<div class="sec"><h3>画像</h3><div class="grid2">${num('pRad','角の丸み',e.radius||0,{min:0})}<button id="pReplace" style="align-self:end">画像を差し替え</button></div>
+        <button id="pRatio" style="margin-top:6px;width:100%">元の縦横比に戻す</button>
+        <div class="hint" style="margin-top:6px">四隅のドラッグは縦横比を保ちます（Shiftで自由に変形）。</div></div>`;
+    }
+    if(isLine){
+      h+=`<div class="sec"><h3>線</h3><div class="grid2"><div class="f row">色 ${col('pStroke',e.stroke)}</div>${num('pSw','太さ',e.sw||6,{min:1})}</div>
+        <div style="margin-top:6px">${seg('pArrow',[[0,'矢印なし'],[1,'終点'],[2,'両端']],e.arrow||0)}</div>
+        <label class="f row" style="margin-top:6px">破線 <input type="checkbox" id="pDash" ${e.dash?'checked':''}></label></div>`;
+    }
+    h+=`<div class="sec"><label class="f row">影をつける <input type="checkbox" id="pShadow" ${e.shadow?'checked':''}></label></div>
+      <div class="sec"><h3>操作</h3><div class="grid"><button id="oTop" title="最前面へ">⤒</button><button id="oUp" title="前面へ">↑</button><button id="oDown" title="背面へ">↓</button><button id="oBottom" title="最背面へ">⤓</button></div>
+      <div class="grid2" style="margin-top:6px"><button id="oDup">複製</button><button id="oDel" class="dan">削除</button></div></div>`;
+  }
+  P.innerHTML=h;$('#lyToggle').onclick=()=>{layersOpen=!layersOpen;try{localStorage.setItem('makerLayers',layersOpen?'1':'0');}catch(e){}renderPanel();};bindPanel();renderLayers();draw();
+}
+function updNums(){const e=selEl();if(!e)return;const set=(id,v)=>{const i=$('#'+id);if(i&&document.activeElement!==i)i.value=Math.round(v);};
+  if(e.type==='line'){set('pX1',e.x1);set('pY1',e.y1);set('pX2',e.x2);set('pY2',e.y2);}else{set('pX',e.x);set('pY',e.y);set('pW',e.w);set('pH',e.h);set('pRot',e.rot||0);}}
+let ct=null;const later=()=>{clearTimeout(ct);ct=setTimeout(commit,500);};
+function bind(id,fn,ev){const el=$('#'+id);if(!el)return;el.addEventListener(ev||'input',()=>{fn(el);draw();later();});}
+function bindPanel(){
+  const e=selEl();
+  if(!e){
+    const resize=(w,h)=>{doc.w=clamp(Math.round(w),100,8000);doc.h=clamp(Math.round(h),100,8000);fit();commit();renderPanel();};
+    $('#cW').onchange=()=>resize(+$('#cW').value,doc.h);$('#cH').onchange=()=>resize(doc.w,+$('#cH').value);
+    $('#cPreset').onchange=ev=>{const s=SIZES[+ev.target.value];if(s)resize(s.w,s.h);};
+    bind('cBg',i=>{doc.bg=i.value;});
+    $('#cBgImg').onclick=()=>$('#fBg').click();
+    $('#cBgDel').onclick=()=>{doc.bgAsset=null;commit();renderPanel();};
+  }else{
+    const N=(id,fn)=>bind(id,i=>{const v=parseFloat(i.value);if(isFinite(v))fn(v);});
+    N('pX',v=>e.x=v);N('pY',v=>e.y=v);N('pW',v=>{e.w=Math.max(10,v);relayout(e);updNums();});N('pH',v=>e.h=Math.max(10,v));
+    N('pRot',v=>e.rot=((v%360)+360)%360);N('pX1',v=>e.x1=v);N('pY1',v=>e.y1=v);N('pX2',v=>e.x2=v);N('pY2',v=>e.y2=v);
+    bind('pOp',i=>e.op=+i.value);
+    if($('#aCenterH'))$('#aCenterH').onclick=()=>{const b=bbox(e),d=doc.w/2-(b.x+b.w/2);if(e.type==='line'){e.x1+=d;e.x2+=d;}else e.x=Math.round(e.x+d);commit();draw();updNums();};
+    if($('#aCenterV'))$('#aCenterV').onclick=()=>{const b=bbox(e),d=doc.h/2-(b.y+b.h/2);if(e.type==='line'){e.y1+=d;e.y2+=d;}else e.y=Math.round(e.y+d);commit();draw();updNums();};
+    bind('pText',i=>{e.text=i.value;relayout(e);updNums();renderLayers();});
+    bind('pFont',i=>{e.font=i.value;relayout(e);updNums();},'change');
+    N('pSize',v=>{e.size=Math.max(6,v);relayout(e);updNums();});
+    N('pLh',v=>{e.lh=clamp(v,.6,4);relayout(e);updNums();});
+    bind('pColor',i=>e.color=i.value);bind('pOutC',i=>e.outlineColor=i.value);N('pOut',v=>e.outline=Math.max(0,v));
+    const segBind=(id,fn)=>{const s=$('#'+id);if(!s)return;s.querySelectorAll('button').forEach(b=>b.onclick=()=>{s.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));fn(b.dataset.v);relayout(e);updNums();draw();commit();});};
+    segBind('pWeight',v=>e.weight=+v);segBind('pAlign',v=>e.align=v);segBind('pArrow',v=>e.arrow=+v);
+    bind('pFill',i=>{e.fill=i.value;const nf=$('#pNoFill');if(nf)nf.checked=false;});
+    bind('pNoFill',i=>{e.fill=i.checked?null:($('#pFill').value);},'change');
+    bind('pStroke',i=>e.stroke=i.value);N('pSw',v=>e.sw=Math.max(0,v));N('pRad',v=>e.radius=Math.max(0,v));
+    bind('pDash',i=>e.dash=i.checked,'change');bind('pShadow',i=>e.shadow=i.checked,'change');
+    if($('#pReplace'))$('#pReplace').onclick=()=>{imgTarget=e;$('#fImg').click();};
+    if($('#pRatio'))$('#pRatio').onclick=()=>{const im=getImg(e.asset);if(im){e.h=Math.round(e.w*im.naturalHeight/im.naturalWidth);commit();draw();updNums();}};
+    $('#oTop').onclick=()=>order('top');$('#oBottom').onclick=()=>order('bottom');$('#oUp').onclick=()=>order(1);$('#oDown').onclick=()=>order(-1);
+    $('#oDup').onclick=duplicate;$('#oDel').onclick=removeSel;
+  }
+}
+function elLabel(e){return e.type==='text'?(String(e.text||'').split('\n')[0].slice(0,18)||'（空のテキスト）'):TYPE_NAME[e.type]+(e.type==='line'&&e.arrow?'（矢印）':'');}
+function renderLayers(){
+  const box=$('#layers');if(!box)return;box.innerHTML='';
+  if(!doc.els.length){box.innerHTML='<div class="hint">まだ何もありません</div>';return;}
+  [...doc.els].reverse().forEach(e=>{
+    const r=document.createElement('div');r.className='ly'+(e.id===sel?' sel':'')+(e.hidden?' hid':'');
+    r.innerHTML=`<i>${TYPE_IC[e.type]}</i><span class="nm">${esc(elLabel(e))}</span>`;
+    const b=document.createElement('button');b.textContent=e.hidden?'表示':'隠す';b.onclick=ev=>{ev.stopPropagation();e.hidden=!e.hidden;if(e.hidden&&sel===e.id)sel=null;commit();renderPanel();};
+    const l=document.createElement('button');l.textContent=e.locked?'🔒':'🔓';l.title='ロック（キャンバス上で選択できなくする）';l.onclick=ev=>{ev.stopPropagation();e.locked=!e.locked;commit();renderLayers();};
+    r.append(l,b);r.onclick=()=>{sel=e.id;renderPanel();};box.appendChild(r);
+  });
+}
+
+/* ================= storage (IndexedDB) ================= */
+let db=null;
+function openDB(){return new Promise(res=>{try{const r=indexedDB.open('signage-maker',1);r.onupgradeneeded=()=>r.result.createObjectStore('projects',{keyPath:'id'});r.onsuccess=()=>{db=r.result;res();};r.onerror=()=>res();}catch(e){res();}});}
+function store(mode,fn){return new Promise((res,rej)=>{if(!db){res(null);return;}const t=db.transaction('projects',mode),s=t.objectStore('projects');const q=fn(s);t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);});}
+function serial(d){const used=new Set([d.bgAsset,...d.els.map(e=>e.asset)].filter(Boolean));const assets={};used.forEach(a=>{if(d.assets[a])assets[a]=d.assets[a];});
+  return {id:d.id,name:d.name,w:d.w,h:d.h,bg:d.bg,bgAsset:d.bgAsset,els:d.els.map(e=>{const o={...e};delete o._lines;delete o._kt;return o;}),assets,created:d.created,updated:Date.now()};}
+async function thumb(d){await waitImages(d);const k=320/Math.max(d.w,d.h),c=document.createElement('canvas');c.width=Math.round(d.w*k);c.height=Math.round(d.h*k);const x=c.getContext('2d');x.scale(k,k);render(x,d);return c.toDataURL('image/jpeg',.75);}
+let svT=null;
+function scheduleSave(){clearTimeout(svT);svT=setTimeout(saveNow,800);}
+async function saveNow(){try{doc.name=$('#pname').value.trim()||'無題';const s=serial(doc);s.thumb=await thumb(doc);await store('readwrite',st=>st.put(s));try{localStorage.setItem('makerLast',doc.id);}catch(e){}}catch(e){toast('保存できませんでした（容量不足の可能性）',4000);}}
+function loadDoc(s){doc={...s,assets:s.assets||{}};delete doc.thumb;doc.els.forEach(relayout);sel=null;$('#pname').value=doc.name||'無題';hist=[];hi=-1;commit();fit();renderPanel();}
+$('#pname').addEventListener('input',scheduleSave);
+
+/* ================= menus & modals ================= */
+function closeMenus(){$$('.dd').forEach(d=>d.classList.remove('on'));}
+// メニューはボタン列（横スクロール領域）に隠れないよう、画面基準で表示する
+function openMenu(btn,dd){const on=!dd.classList.contains('on');closeMenus();if(!on)return;const r=btn.getBoundingClientRect();
+  dd.style.top=(r.bottom+6)+'px';dd.style.left=Math.max(8,Math.min(r.left,window.innerWidth-190))+'px';dd.classList.add('on');}
+$('#mFile').onclick=ev=>{ev.stopPropagation();openMenu(ev.currentTarget,$('#ddFile'));};
+$('#mShape').onclick=ev=>{ev.stopPropagation();openMenu(ev.currentTarget,$('#ddShape'));};
+window.addEventListener('resize',closeMenus);$('header').addEventListener('scroll',closeMenus);
+document.addEventListener('click',ev=>{if(!ev.target.closest('.menu'))closeMenus();});
+function modal(html){$('#mbox').innerHTML=html;$('#modal').classList.add('on');}
+function closeModal(){$('#modal').classList.remove('on');}
+$('#modal').addEventListener('pointerdown',e=>{if(e.target.id==='modal')closeModal();});
+$$('#ddFile [data-a]').forEach(b=>b.onclick=()=>{closeMenus();({new:newDialog,open:openDialog,dup:dupDoc,exportJson:exportJson,importJson:()=>$('#fJson').click()})[b.dataset.a]();});
+function sizeButtons(){return `<div class="sizes">${SIZES.map((s,i)=>{const k=60/Math.max(s.w,s.h);return `<button data-i="${i}"><i style="width:${s.w*k}px;height:${s.h*k}px"></i>${s.n}<span>${s.w}×${s.h}</span></button>`;}).join('')}</div>`;}
+$('#bNew').onclick=()=>{closeMenus();newDialog();};
+function newDialog(){
+  modal(`<h2>新規作成：サイズを選ぶ</h2>${sizeButtons()}<p class="hint" style="margin-top:10px">表示するサイネージ画面と同じ縦横比を選ぶと、余白なく表示されます。</p><footer><button id="mC">キャンセル</button></footer>`);
+  $('#mC').onclick=closeModal;
+  $$('#mbox .sizes button').forEach(b=>b.onclick=async()=>{await saveNow();const s=SIZES[+b.dataset.i];const d=newDoc(s.w,s.h);closeModal();loadDoc(d);saveNow();});
+}
+async function openDialog(){
+  await saveNow();
+  const list=((await store('readonly',s=>s.getAll()))||[]).sort((a,b)=>b.updated-a.updated);
+  modal(`<h2>デザインを開く</h2><div class="plist">${list.map(p=>`<div class="pc ${p.id===doc.id?'cur':''}" data-id="${p.id}"><img src="${p.thumb||''}" alt=""><div><b>${esc(p.name)}</b>${p.w}×${p.h} ・ ${new Date(p.updated).toLocaleDateString('ja-JP')}</div>
+    <div class="acts"><button data-op="dup">複製</button><button data-op="del" class="dan">削除</button></div></div>`).join('')||'<p class="hint">保存されたデザインはありません</p>'}</div><footer><button id="mC">閉じる</button></footer>`);
+  $('#mC').onclick=closeModal;
+  $$('#mbox .pc').forEach(c=>{const p=list.find(x=>x.id===c.dataset.id);
+    c.onclick=()=>{closeModal();loadDoc(p);};
+    c.querySelector('[data-op=dup]').onclick=async ev=>{ev.stopPropagation();const n={...p,id:uid(),name:p.name+' のコピー',created:Date.now(),updated:Date.now()};await store('readwrite',s=>s.put(n));openDialog();};
+    c.querySelector('[data-op=del]').onclick=async ev=>{ev.stopPropagation();const b=ev.target;if(!b._c){b._c=1;b.textContent='本当に削除';return;}
+      await store('readwrite',s=>s.delete(p.id));if(p.id===doc.id){loadDoc(newDoc(doc.w,doc.h));}openDialog();};
+  });
+}
+async function dupDoc(){await saveNow();const s=serial(doc);s.id=uid();s.name=(doc.name||'無題')+' のコピー';s.created=Date.now();loadDoc(s);await saveNow();toast('複製しました');}
+function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000);}
+function safeName(){return (($('#pname').value||'デザイン').trim().replace(/[\\/:*?"<>|]/g,'_'))||'デザイン';}
+function exportJson(){const s=serial(doc);download(new Blob([JSON.stringify({app:'signage-maker',version:1,doc:s})],{type:'application/json'}),safeName()+'.json');}
+$('#fJson').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text());const d=j.doc||j;if(!Array.isArray(d.els))throw 0;await saveNow();d.id=uid();loadDoc(d);await saveNow();toast('読み込みました');}catch(err){toast('デザインファイルではありません');}};
+
+/* ---- export image ---- */
+let exp={fmt:'png',k:1};
+$('#bExport').onclick=()=>{
+  modal(`<h2>画像に書き出す</h2>
+   <div class="grid2"><label class="f">形式${seg('eFmt',[['png','PNG（文字がくっきり）'],['jpeg','JPEG（軽い）']],exp.fmt)}</label>
+   <label class="f">大きさ${seg('eK',[[1,'等倍'],[.5,'1/2']],exp.k)}</label></div>
+   <p class="hint" style="margin-top:8px" id="eInfo"></p>
+   <footer><button id="mC">閉じる</button><button id="eShare" hidden>共有・写真に保存</button><button class="pri" id="eSave">ファイルに保存</button></footer>`);
+  const info=()=>{$('#eInfo').textContent=`${Math.round(doc.w*exp.k)} × ${Math.round(doc.h*exp.k)} px ／ ファイル名：${safeName()}.${exp.fmt==='png'?'png':'jpg'}`;};
+  const sg=(id,key,num)=>$$('#'+id+' button').forEach(b=>b.onclick=()=>{$$('#'+id+' button').forEach(x=>x.classList.toggle('on',x===b));exp[key]=num?+b.dataset.v:b.dataset.v;info();});
+  sg('eFmt','fmt');sg('eK','k',1);info();
+  $('#mC').onclick=closeModal;
+  const make=async()=>{await waitImages(doc);const c=document.createElement('canvas');c.width=Math.round(doc.w*exp.k);c.height=Math.round(doc.h*exp.k);
+    const x=c.getContext('2d');x.scale(exp.k,exp.k);render(x,doc);
+    const blob=await new Promise(r=>c.toBlob(r,'image/'+exp.fmt,.92));return new File([blob],safeName()+(exp.fmt==='png'?'.png':'.jpg'),{type:blob.type});};
+  $('#eSave').onclick=async()=>{const f=await make();download(f,f.name);toast('書き出しました');};
+  const probe=new File([new Blob(['x'],{type:'image/png'})],'a.png',{type:'image/png'});
+  if(navigator.canShare&&navigator.canShare({files:[probe]})){$('#eShare').hidden=false;
+    $('#eShare').onclick=async()=>{try{const f=await make();await navigator.share({files:[f]});}catch(e){if(e.name!=='AbortError')toast('共有できませんでした。「ファイルに保存」を使ってください',4000);}};}
+};
+
+/* ================= boot ================= */
+(async()=>{
+  await openDB();
+  let last=null;try{last=localStorage.getItem('makerLast');}catch(e){}
+  let p=null;if(last)p=await store('readonly',s=>s.get(last)).catch(()=>null);
+  if(p)loadDoc(p);
+  else{
+    const k=1;doc=newDoc(1920,1080);doc.bg='#14284b';
+    doc.els=[
+      {id:uid(),type:'rect',x:120,y:120,w:14,h:200,fill:'#3ddc97',stroke:'#000000',sw:0,radius:7,rot:0,op:1},
+      {id:uid(),type:'text',x:170,y:110,w:1400,h:200,text:'サイネージ画像メーカー',size:110,weight:900,font:'sans',color:'#ffffff',align:'left',lh:1.2,op:1},
+      {id:uid(),type:'text',x:170,y:260,w:1400,h:80,text:'テキスト・画像・図形を自由に配置して、画像に書き出せます。',size:48,weight:400,font:'sans',color:'#cfe0f5',align:'left',lh:1.4,op:1},
+      {id:uid(),type:'rect',x:170,y:520,w:760,h:380,fill:'#ffffff',stroke:'#000000',sw:0,radius:36,rot:0,op:1,shadow:true},
+      {id:uid(),type:'text',x:230,y:590,w:640,h:200,text:'このサンプルは自由に\n動かしたり消したりできます',size:52,weight:700,font:'sans',color:'#14284b',align:'left',lh:1.45,op:1},
+      {id:uid(),type:'ellipse',x:1240,y:480,w:440,h:440,fill:'#f2c14e',stroke:'#000000',sw:0,rot:0,op:1},
+      {id:uid(),type:'line',x1:960,y1:710,x2:1200,y2:710,stroke:'#ffffff',sw:12,arrow:1,dash:false,op:1},
+    ];
+    loadDoc(doc);saveNow();
+  }
+})();
+})();
+</script>
+</body>
+</html>

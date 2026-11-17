@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="サイネージ操作">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<title>サイネージ操作</title>
+<style>
+:root{--bg:#0b0d10;--panel:#14171c;--line:#262b33;--fg:#e9edf2;--mut:#8a94a3;--acc:#3ddc97;--warn:#ff6b5b;--amber:#f2c14e;
+  --sans:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;
+  padding:calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left))}
+.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+h1{font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px}
+h1 small{font-size:12px;color:var(--mut);font-weight:400;margin-left:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.card h2{font-size:13px;color:var(--mut);font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%;background:#555;flex:none}
+.dot.on{background:var(--acc)}.dot.off{background:var(--warn)}
+.now{display:flex;gap:12px;align-items:center}
+.now .th{width:96px;height:54px;border-radius:8px;background:#222 center/cover;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;overflow:hidden;text-align:center;padding:2px}
+.now b{font-size:16px;display:block}
+.now span{font-size:12px;color:var(--mut)}
+button{font:inherit;font-size:15px;font-weight:700;border:1px solid var(--line);background:#1b1f26;color:var(--fg);border-radius:11px;padding:10px 12px;min-height:44px;cursor:pointer;touch-action:manipulation}
+button:active{transform:scale(.97)}
+button.pri{background:var(--acc);color:#04130c;border-color:var(--acc)}
+button.dan{color:var(--warn)}
+button.on{border-color:var(--acc);color:var(--acc)}
+button.sm{min-height:38px;padding:6px 10px;font-size:13px;border-radius:9px}
+button:disabled{opacity:.35}
+.ctl{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:8px;margin-top:12px}
+.ctl button{font-size:22px;min-height:58px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>button{flex:1}
+textarea,input[type=text],input[type=number]{font:inherit;font-size:16px;background:#0f1216;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
+textarea{min-height:70px;resize:vertical}
+input[type=color]{width:52px;height:40px;border:1px solid var(--line);border-radius:9px;background:#0f1216;padding:2px}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;font-size:15px}
+.tog{position:relative;width:52px;height:30px;border-radius:15px;background:#333;border:0;min-height:0;padding:0;flex:none}
+.tog::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}
+.tog.on{background:var(--acc)}.tog.on::after{left:25px}
+.list{display:flex;flex-direction:column;gap:8px}
+.it{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center;background:#0f1216;border:1px solid var(--line);border-radius:12px;padding:8px}
+.it.cur{border-color:var(--acc)}
+.it.dis{opacity:.5}
+.it .th{width:64px;height:40px;border-radius:6px;background:#222 center/cover;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;overflow:hidden;text-align:center}
+.it .th video{width:100%;height:100%;object-fit:cover}
+.it b{font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it span{font-size:12px;color:var(--mut)}
+.it .acts{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.it .acts button{flex:1 1 auto}
+.prog{height:6px;border-radius:3px;background:#222;overflow:hidden;margin-top:8px}
+.prog i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+.mut{font-size:12px;color:var(--mut);line-height:1.6}
+a{color:var(--acc)}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#1b1f26;border:1px solid var(--line);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:9;max-width:90vw;text-align:center}
+#toast.on{opacity:1}
+#pinBox{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:8;padding:20px}
+#pinBox.on{display:flex}
+#pinBox .card{width:300px;text-align:center}
+#pinBox input{text-align:center;font-size:24px;letter-spacing:.3em;margin:12px 0}
+.form{display:none;flex-direction:column;gap:8px;margin-top:10px}
+.form.on{display:flex}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>サイネージ操作 <small id="host"></small></h1>
+
+  <div class="card">
+    <h2><span class="dot" id="dot"></span><span id="conn">接続中…</span></h2>
+    <div class="now"><div class="th" id="nowTh"></div><div><b id="nowName">—</b><span id="nowState"></span></div></div>
+    <div class="ctl">
+      <button id="cPrev" aria-label="前へ">⏮</button>
+      <button id="cToggle" class="pri" aria-label="一時停止／再開">⏸</button>
+      <button id="cNext" aria-label="次へ">⏭</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="cBlack">黒画面</button>
+      <button id="cReload">表示を再読み込み</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>テロップ・時計</h2>
+    <div class="sw">テロップを表示<button class="tog" id="tTick" aria-label="テロップ表示"></button></div>
+    <textarea id="tickText" placeholder="流す文章"></textarea>
+    <div class="row" style="margin-top:8px"><button class="pri" id="tickSave">テロップの文章を保存</button></div>
+    <div class="sw" style="margin-top:8px">時計を表示<button class="tog" id="tClock" aria-label="時計表示"></button></div>
+  </div>
+
+  <div class="card">
+    <h2>プレイリスト <span style="margin-left:auto;font-weight:400" id="cnt"></span></h2>
+    <div class="row" style="margin-bottom:10px">
+      <button id="addMedia">＋ 写真・動画</button>
+      <button id="addText">＋ テキスト</button>
+      <input type="file" id="fileIn" accept="image/*,video/*" multiple hidden>
+    </div>
+    <div id="upl" hidden><div class="mut" id="uplTxt"></div><div class="prog"><i id="uplBar"></i></div></div>
+    <div class="form" id="textForm">
+      <input type="text" id="fTitle" placeholder="見出し">
+      <textarea id="fBody" placeholder="本文（省略可）"></textarea>
+      <div class="row" style="align-items:center"><span class="mut">背景</span><input type="color" id="fBg" value="#101820"><span class="mut">文字</span><input type="color" id="fFg" value="#ffffff">
+        <span class="mut">秒数</span><input type="number" id="fDur" value="8" min="1" style="width:80px"></div>
+      <div class="row"><button id="fCancel">キャンセル</button><button class="pri" id="fOk">追加</button></div>
+    </div>
+    <div class="list" id="list" style="margin-top:6px"></div>
+  </div>
+
+  <div class="card">
+    <h2>詳細設定</h2>
+    <p class="mut" style="margin-bottom:10px">レイアウト・スケジュール（曜日・時間帯・表示期間）・切替効果・営業時間などは詳細設定画面で変更できます。変更はすぐサイネージに反映されます。</p>
+    <div class="row"><button onclick="location.href='/?mode=editor'">詳細設定を開く</button></div>
+  </div>
+</div>
+<div id="toast"></div>
+<div id="pinBox"><div class="card"><h2 style="justify-content:center">PINを入力</h2><input type="password" id="pinIn" inputmode="numeric"><button class="pri" id="pinOk" style="width:100%">OK</button></div></div>
+
+<script>
+(()=>{
+"use strict";
+const $=s=>document.querySelector(s);
+const ORIGIN='remote-'+Math.random().toString(36).slice(2);
+const DAYS=[0,1,2,3,4,5,6];
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+let st=null,status={},busy=false;
+function toast(m,ms){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),ms||2200);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function pin(){try{return localStorage.getItem('signagePin')||'';}catch(e){return '';}}
+async function api(path,opt){
+  opt=opt||{};opt.headers=Object.assign({},opt.headers||{});if(pin())opt.headers['X-Pin']=pin();
+  const r=await fetch(path,opt);
+  if(r.status===401){askPin();throw new Error('PIN');}
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r;
+}
+function askPin(){$('#pinBox').classList.add('on');$('#pinIn').value='';setTimeout(()=>$('#pinIn').focus(),50);}
+$('#pinOk').onclick=async()=>{try{localStorage.setItem('signagePin',$('#pinIn').value);}catch(e){}
+  const r=await fetch('/api/auth',{method:'POST',headers:{'X-Pin':pin()}});
+  if(r.ok){$('#pinBox').classList.remove('on');toast('認証しました');}else{toast('PINが違います');$('#pinIn').value='';}};
+$('#pinIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('#pinOk').click();});
+
+/* ---------- state ---------- */
+async function load(){st=await (await fetch('/api/state',{cache:'no-store'})).json();if(!st.settings)st.settings={};if(!st.items)st.items=[];render();}
+async function mutate(fn,msg){
+  if(busy)return;busy=true;
+  try{await load();fn(st);
+    await api('/api/state',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({origin:ORIGIN,settings:st.settings,items:st.items})});
+    render();if(msg)toast(msg);}
+  catch(e){if(e.message!=='PIN')toast('保存できませんでした: '+e.message,4000);}
+  finally{busy=false;}
+}
+const cmd=(c,extra)=>api('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({cmd:c},extra||{}))}).catch(e=>{if(e.message!=='PIN')toast('送信できませんでした');});
+
+function layout(s){
+  if(!Array.isArray(s.layout)||!s.layout.some(w=>w.type==='main'))
+    s.layout=[{id:'main',type:'main',x:0,y:0,w:100,h:93},{id:uid(),type:'ticker',x:0,y:93,w:100,h:7},{id:uid(),type:'clock',x:83,y:3,w:15,h:10,color:'#ffffff',bg:'#000000',bgA:45}];
+  return s.layout;
+}
+function widgetOn(type){const w=layout(st.settings).find(x=>x.type===type);return !!(w&&!w.off);}
+function setWidget(type,on){mutate(s=>{const L=layout(s.settings);let w=L.find(x=>x.type===type);
+  if(!w){if(!on)return;
+    w=type==='ticker'?{id:uid(),type:'ticker',x:0,y:93,w:100,h:7}:{id:uid(),type:'clock',x:83,y:3,w:15,h:10,color:'#ffffff',bg:'#000000',bgA:45};
+    L.push(w);if(type==='ticker'){const m=L.find(x=>x.type==='main');if(m&&m.y+m.h>93)m.h=93-m.y;}}
+  w.off=on?0:1;},(type==='ticker'?'テロップ':'時計')+(on?'を表示':'を非表示'));}
+
+/* ---------- render ---------- */
+function thumb(el,it){
+  el.innerHTML='';el.style.backgroundImage='';el.style.background='';el.style.color='';
+  if(!it){return;}
+  if(it.type==='image'&&it.mediaId)el.style.backgroundImage=`url("/media/${it.mediaId}")`;
+  else if(it.type==='video'&&it.mediaId){const v=document.createElement('video');v.src=`/media/${it.mediaId}#t=0.5`;v.muted=true;v.playsInline=true;v.preload='metadata';v.style.cssText='width:100%;height:100%;object-fit:cover';el.appendChild(v);}
+  else if(it.type==='text'){el.style.background=it.bg||'#000';el.style.color=it.fg||'#fff';el.textContent=(it.title||'').slice(0,8);}
+  else if(it.type==='url'){el.style.background='#2b3a55';el.textContent='WEB';}
+}
+function render(){
+  if(!st)return;
+  $('#tickText').value=document.activeElement===$('#tickText')?$('#tickText').value:(st.settings.tickText||'');
+  $('#tTick').classList.toggle('on',widgetOn('ticker'));
+  $('#tClock').classList.toggle('on',widgetOn('clock'));
+  const list=$('#list');list.innerHTML='';
+  $('#cnt').textContent=st.items.length+'件';
+  st.items.forEach((it,i)=>{
+    const d=document.createElement('div');d.className='it'+(it.enabled?'':' dis')+(status.cur&&status.cur.id===it.id?' cur':'');
+    const th=document.createElement('div');th.className='th';thumb(th,it);
+    const typ={image:'画像',video:'動画',text:'テキスト',url:'Web'}[it.type]||'';
+    const m=document.createElement('div');m.innerHTML=`<b>${i+1}. ${esc(it.name)}</b><span>${typ} ・ ${it.type==='video'&&!it.dur?'動画の長さ':(it.dur||8)+'秒'}${it.enabled?'':' ・ 無効'}</span>`;
+    const a=document.createElement('div');a.className='acts';
+    const b=(t,fn,cls,dis)=>{const x=document.createElement('button');x.className='sm '+(cls||'');x.textContent=t;x.disabled=!!dis;x.onclick=fn;return x;};
+    a.append(
+      b('▶ 今すぐ表示',()=>{cmd('goto',{id:it.id});toast('表示を切り替えました');},'pri'),
+      b(it.enabled?'無効にする':'有効にする',()=>mutate(s=>{const t=s.items.find(x=>x.id===it.id);if(t)t.enabled=!t.enabled;})),
+      b('↑',()=>mutate(s=>{const j=s.items.findIndex(x=>x.id===it.id);if(j>0)[s.items[j-1],s.items[j]]=[s.items[j],s.items[j-1]];}),'',i===0),
+      b('↓',()=>mutate(s=>{const j=s.items.findIndex(x=>x.id===it.id);if(j>=0&&j<s.items.length-1)[s.items[j+1],s.items[j]]=[s.items[j],s.items[j+1]];}),'',i===st.items.length-1),
+      b('削除',ev=>{if(d._confirm){delItem(it);}else{d._confirm=1;ev.target.textContent='本当に削除';setTimeout(()=>{d._confirm=0;render();},3000);}},'dan'));
+    d.append(th,m,a);list.appendChild(d);
+  });
+}
+async function delItem(it){
+  await mutate(s=>{s.items=s.items.filter(x=>x.id!==it.id);},'削除しました');
+  if(it.mediaId&&!st.items.some(x=>x.mediaId===it.mediaId)&&!layout(st.settings).some(w=>w.mediaId===it.mediaId))
+    api('/api/media/'+it.mediaId,{method:'DELETE'}).catch(()=>{});
+}
+function renderStatus(){
+  const s=status,age=s.age==null?999:s.age+(Date.now()-(s._recv||Date.now()))/1000;
+  const online=age<15;
+  $('#dot').className='dot '+(online?'on':'off');
+  $('#conn').textContent=online?'サイネージに接続中':'サイネージから応答がありません';
+  const it=s.cur&&st?st.items.find(x=>x.id===s.cur.id):null;
+  $('#nowName').textContent=s.blackout?'黒画面':s.sleeping?'営業時間外（黒画面）':(s.cur?s.cur.name:(s.playing?'表示できる項目がありません':'停止中'));
+  $('#nowState').textContent=!online?'':s.blackout?'「黒画面」をもう一度押すと再開':s.paused?'一時停止中':s.playing?'再生中':'開始画面';
+  thumb($('#nowTh'),s.blackout||s.sleeping?null:it);
+  $('#cToggle').textContent=s.paused?'▶':'⏸';
+  $('#cBlack').classList.toggle('on',!!s.blackout);$('#cBlack').textContent=s.blackout?'黒画面を解除':'黒画面';
+  document.querySelectorAll('.it').forEach((d,i)=>{const x=st&&st.items[i];d.classList.toggle('cur',!!(x&&s.cur&&s.cur.id===x.id));});
+}
+setInterval(renderStatus,3000);
+
+/* ---------- controls ---------- */
+$('#cPrev').onclick=()=>cmd('prev');
+$('#cNext').onclick=()=>cmd('next');
+$('#cToggle').onclick=()=>cmd(status.paused?'resume':'pause');
+$('#cBlack').onclick=()=>cmd(status.blackout?'unblack':'black');
+$('#cReload').onclick=()=>{cmd('reload');toast('サイネージを再読み込みします');};
+$('#tTick').onclick=()=>setWidget('ticker',!widgetOn('ticker'));
+$('#tClock').onclick=()=>setWidget('clock',!widgetOn('clock'));
+$('#tickSave').onclick=()=>{const v=$('#tickText').value.replace(/\n+/g,' ');mutate(s=>{s.settings.tickText=v;},'テロップを更新しました');$('#tickText').blur();};
+
+/* add text */
+$('#addText').onclick=()=>{$('#textForm').classList.toggle('on');$('#fTitle').focus();};
+$('#fCancel').onclick=()=>$('#textForm').classList.remove('on');
+$('#fOk').onclick=()=>{const title=$('#fTitle').value.trim();if(!title){toast('見出しを入力してください');return;}
+  mutate(s=>{s.items.push({id:uid(),type:'text',name:title.split('\n')[0].slice(0,30),dur:Math.max(1,+$('#fDur').value||8),enabled:true,days:DAYS.slice(),start:'',end:'',
+    tag:'',title,body:$('#fBody').value,bg:$('#fBg').value,fg:$('#fFg').value,align:'left'});},'テキストを追加しました');
+  $('#fTitle').value='';$('#fBody').value='';$('#textForm').classList.remove('on');};
+
+/* upload media */
+$('#addMedia').onclick=()=>$('#fileIn').click();
+function upload(f,mid,onp){return new Promise((res,rej)=>{const x=new XMLHttpRequest();
+  x.open('PUT',`/api/media?id=${mid}&name=${encodeURIComponent(f.name||'')}&type=${encodeURIComponent(f.type||'')}`);
+  if(pin())x.setRequestHeader('X-Pin',pin());
+  x.upload.onprogress=e=>{if(e.lengthComputable)onp(e.loaded/e.total);};
+  x.onload=()=>{if(x.status===401){askPin();rej(new Error('PIN'));}else if(x.status>=200&&x.status<300)res();else rej(new Error('HTTP '+x.status));};
+  x.onerror=()=>rej(new Error('通信エラー'));x.send(f);});}
+$('#fileIn').onchange=async e=>{
+  const files=[...e.target.files];e.target.value='';if(!files.length)return;
+  const added=[];$('#upl').hidden=false;
+  for(let i=0;i<files.length;i++){const f=files[i];
+    const type=f.type.startsWith('video/')?'video':f.type.startsWith('image/')?'image':null;if(!type){toast('対応していない形式: '+f.name);continue;}
+    const mid=uid();
+    try{await upload(f,mid,p=>{$('#uplTxt').textContent=`送信中 ${i+1}/${files.length}：${f.name}（${Math.round(p*100)}%）`;$('#uplBar').style.width=(p*100)+'%';});}
+    catch(err){if(err.message!=='PIN')toast('送信できませんでした: '+f.name,4000);continue;}
+    added.push({id:uid(),type,name:(f.name||type).replace(/\.[^.]+$/,''),dur:type==='video'?0:8,enabled:true,days:DAYS.slice(),start:'',end:'',mediaId:mid,sound:false});
+  }
+  $('#upl').hidden=true;$('#uplBar').style.width='0';
+  if(added.length)mutate(s=>{s.items.push(...added);},added.length+'件追加しました');
+};
+
+/* ---------- live updates ---------- */
+function connect(){
+  const es=new EventSource('/api/events');
+  es.addEventListener('status',e=>{status=JSON.parse(e.data);status._recv=Date.now();renderStatus();});
+  es.addEventListener('state',e=>{const d=JSON.parse(e.data);if(d.origin!==ORIGIN)load().then(renderStatus);});
+  es.onopen=()=>{load().then(renderStatus).catch(()=>{});};
+}
+fetch('/api/info').then(r=>r.json()).then(i=>{$('#host').textContent=i.hostname||'';if(i.pinRequired&&!pin())askPin();}).catch(()=>{});
+load().then(renderStatus).catch(()=>{$('#conn').textContent='サーバーに接続できません';});
+connect();
+})();
+</script>
+</body>
+</html>
