@@ -330,7 +330,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 (()=>{
 "use strict";
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION='1.10.0';
+const APP_VERSION='1.10.1';
 const isIOS=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const DAYS=['日','月','火','水','木','金','土'];
@@ -502,7 +502,9 @@ async function analyzeLoudness(blob){
   let ab;try{ab=await new Promise((res,rej)=>{const p=dctx.decodeAudioData(buf,res,rej);if(p&&p.then)p.then(res,rej);});}catch(e){return {none:true};}
   const n=ab.length,ch=ab.numberOfChannels,bl=Math.max(1,Math.round(ab.sampleRate*0.4));const blocks=[];let peak=0;
   const data=[];for(let c=0;c<ch;c++)data.push(ab.getChannelData(c));
-  for(let i=0;i<n;i+=bl){let ss=0,cnt=0;const e=Math.min(n,i+bl);for(let c=0;c<ch;c++){const d=data[c];for(let j=i;j<e;j++){const x=d[j];ss+=x*x;const a=x<0?-x:x;if(a>peak)peak=a;}cnt+=e-i;}blocks.push(ss/cnt);}
+  let t0=performance.now();
+  for(let i=0;i<n;i+=bl){let ss=0,cnt=0;const e=Math.min(n,i+bl);for(let c=0;c<ch;c++){const d=data[c];for(let j=i;j<e;j+=4){const x=d[j];ss+=x*x;const a=x<0?-x:x;if(a>peak)peak=a;cnt++;}}blocks.push(ss/(cnt||1));
+    if(performance.now()-t0>8){await new Promise(r=>setTimeout(r,16));t0=performance.now();}}   // 少しずつ計算して画面の動きを止めない
   const db=x=>10*Math.log10(x||1e-12);
   let keep=blocks.filter(b=>db(b)>-70);if(!keep.length)return {none:true};
   const m1=keep.reduce((a,b)=>a+b,0)/keep.length;keep=keep.filter(b=>db(b)>db(m1)-10);
@@ -514,14 +516,16 @@ async function analyzePending(manual){
   if(anaBusy)return;anaBusy=true;let done=0;
   try{
     for(const it of items.filter(i=>i.type==='video'&&!i.loud)){
+      if(!manual)for(let w=0;w<60&&playing&&cur&&cur.type==='video';w++)await new Promise(r=>setTimeout(r,2000));   // 動画の再生中は解析を待つ
       const info=$('#sAnaInfo');if(info)info.textContent=`解析中：${it.name}`;
       let r=null;try{const b=await blobGet(it.mediaId);r=await analyzeLoudness(b);}catch(e){}
       if(r){const t=items.find(x=>x.id===it.id);if(t){t.loud=r;done++;save();log(`音量を解析: ${it.name}（${r.none?'音声なし':r.db+' dB'}）`);}}
     }
   }finally{anaBusy=false;const info=$('#sAnaInfo');if(info)info.textContent=done?`${done}件を解析しました`:(manual?'未解析の動画はありません':'');if($('#admin').classList.contains('on'))renderItems();}
 }
+const needAudio=()=>items.some(i=>i.type==='video'&&i.sound&&i.enabled);
 function unlockAudio(){
-  setupAudio();audioResume();
+  if(needAudio())setupAudio();audioResume();
   if(audioOK>=vpool.length)return;
   const src=$('#nosleep').getAttribute('src');
   vpool.forEach(v=>{if(v._ok||v.isConnected)return;const tk=v._tk;v.muted=false;v.src=src;const p=v.play();
@@ -555,7 +559,7 @@ function togglePause(){
   $('#aPause').textContent=paused?'▶︎':'⏸';reportStatus();
 }
 function startPlayback(fs){
-  if(AC&&!actx){try{const t=new AC();const ok=t.state==='running';t.close&&t.close();if(ok)setupAudio();}catch(e){}}
+  if(AC&&!actx&&needAudio()){try{const t=new AC();const ok=t.state==='running';t.close&&t.close();if(ok)setupAudio();}catch(e){}}
   $('#boot').style.display='none';playing=true;paused=false;
   if(fs)enterFS();
   requestWake();applyOverlays();
@@ -590,8 +594,9 @@ function ensureLayout(){
 }
 const hexA=(hex,a)=>{const n=parseInt((hex||'#000000').slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${(a??100)/100})`;};
 function place(el,w){el.style.left=w.x+'%';el.style.top=w.y+'%';el.style.width=w.w+'%';el.style.height=w.h+'%';}
+let lastBand=null;
 function applyOverlays(){
-  document.documentElement.style.setProperty('--band',S.topBand?'env(safe-area-inset-top, 0px)':'0px');
+  const band=S.topBand?'env(safe-area-inset-top, 0px)':'0px';if(band!==lastBand){lastBand=band;document.documentElement.style.setProperty('--band',band);}
   ensureLayout();
   const box=$('#widgets');
   box.classList.toggle('off',!playing||sleeping||blackout);
