@@ -23,7 +23,9 @@ html,body{position:fixed;inset:0;height:100%;background:#000;color:var(--fg);fon
 body.hide-cursor,body.hide-cursor *{cursor:none!important}
 
 /* ===== Stage ===== */
-#stage{position:fixed;inset:0;background:#000;overflow:hidden}
+/* 画面上部の時刻・電池表示（iPad）を避けるため、表示領域を #screen にまとめて上端を --band だけ下げる */
+#screen{position:fixed;left:0;right:0;bottom:0;top:var(--band,0px);background:#000}
+#stage{position:absolute;inset:0;background:#000;overflow:hidden}
 .layer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition-property:opacity,transform;transition-timing-function:ease-in-out}
 .layer.show{opacity:1;transform:none}
 .layer.t-slide{transform:translateX(100%);opacity:1}
@@ -44,7 +46,7 @@ body.hide-cursor,body.hide-cursor *{cursor:none!important}
 
 /* ===== Widgets (layout) ===== */
 #stage{right:auto;bottom:auto}
-#widgets{position:fixed;inset:0;z-index:5;pointer-events:none}
+#widgets{position:absolute;inset:0;z-index:5;pointer-events:none}
 #widgets.off{display:none}
 .wg{position:absolute;container-type:size;overflow:hidden;display:flex;align-items:center;transition:opacity .4s}
 .wg.hid{opacity:0}
@@ -165,8 +167,10 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 </style>
 </head>
 <body>
+<div id="screen">
 <div id="stage"><div id="progress"></div><div id="empty" hidden><div style="font-size:42px">▢</div>再生できる項目がありません<br><small>左上の角を長押し（2秒）して管理画面から追加してください</small></div></div>
 <div id="widgets" class="off"></div>
+</div>
 <div id="hotspot"><div class="ring"></div></div>
 <video id="nosleep" src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMvbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAll0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHRbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABfG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAATxzdGJsAAAAvHN0c2QAAAAAAAAAAQAAAKxhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAAMmF2Y0MBZAAK/+EAF2dkAAqs2V7ARAAAAwAEAAADAAg8SJZYAQAEaO+Py/34+AAAAAAQcGFzcAAAAAEAAAABAAAAFGJ0cnQAAAAAAAALQAAAC0AAAAAYc3R0cwAAAAAAAAABAAAAAgAAQAAAAAAUc3RzcwAAAAAAAAABAAAAAQAAABxzdHNjAAAAAAAAAAEAAAABAAAAAgAAAAEAAAAcc3RzegAAAAAAAAAAAAAAAgAAAsQAAAAMAAAAFHN0Y28AAAAAAAAAAQAAA18AAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAAC2G1kYXQAAAKqBgX//6bcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MSByZWY9MSBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgzOjB4MyBtZT1oZXggc3VibWU9MiBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0wIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MCA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0wIHRocmVhZHM9MSBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTMgYl9weXJhbWlkPTIgYl9hZGFwdD0xIGJfYmlhcz0wIGRpcmVjdD0xIHdlaWdodGI9MSBvcGVuX2dvcD0wIHdlaWdodHA9MSBrZXlpbnQ9MjUwIGtleWludF9taW49MSBzY2VuZWN1dD00MCBpbnRyYV9yZWZyZXNoPTAgcmNfbG9va2FoZWFkPTEwIHJjPWNyZiBtYnRyZWU9MSBjcmY9MjMuMCBxY29tcD0wLjYwIHFwbWluPTAgcXBtYXg9NjkgcXBzdGVwPTQgaXBfcmF0aW89MS40MCBhcT0xOjEuMDAAgAAAABJliIQAFv/sf8JVf9ECkR5tf/EAAAAIQZohGIK//vA=" muted playsinline webkit-playsinline loop preload="auto"></video>
 <div id="toast"></div>
@@ -277,6 +281,8 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
         <label>画面スリープ防止</label><select id="kWake"><option value="1">オン</option><option value="0">オフ</option></select>
 
         <div class="sec">TOUCH</div>
+        <label>画面上部の時刻・電池表示</label><select id="kBand"><option value="1">黒い帯にしてスライドと重ねない</option><option value="0">スライドの上に重ねる</option></select>
+        <div></div><div style="font-size:12px;color:var(--mut)">iPad をホーム画面のアプリとして使うときに有効です（表示そのものは iPad の仕様で消せません）。</div>
         <label>タッチで切り替え</label><select id="kTouch"><option value="2">スワイプ＋タップ</option><option value="1">スワイプのみ</option><option value="0">オフ</option></select>
         <div></div><div style="font-size:12px;color:var(--mut)">左へスワイプ／右端タップで次へ、右へスワイプ／左端タップで前へ。</div>
       </div>
@@ -318,7 +324,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 (()=>{
 "use strict";
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION='1.9.3';
+const APP_VERSION='1.9.4';
 const isIOS=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const DAYS=['日','月','火','水','木','金','土'];
@@ -375,7 +381,7 @@ const blobDel=k=>SERVER?api('/api/media/'+k,{method:'DELETE'}).catch(()=>{}):db?
 /* ---------- state ---------- */
 const DEFAULT_SETTINGS={trans:'fade',transMs:900,dur:8,fit:'contain',shuffle:0,progress:1,layout:null,
   tickText:'ようこそ ｜ 本日の営業時間 10:00〜20:00 ｜ 管理画面は左上を3回タップ',tickDur:14,tickMode:'once',tickBg:'#111418',tickFg:'#ffffff',
-  autostart:0,reload:'',hours:0,on:'09:00',off:'21:00',pin:'',cursor:1,wake:1,touch:2};
+  autostart:0,reload:'',hours:0,on:'09:00',off:'21:00',pin:'',cursor:1,wake:1,touch:2,topBand:1};
 let S={...DEFAULT_SETTINGS};
 let items=[];             // {id,type:'image'|'video'|'text'|'url',name,dur,enabled,days:[0..6],start,end, mediaId, title,body,tag,bg,fg,align, url}
 const urls={};            // mediaId -> objectURL
@@ -527,6 +533,7 @@ function ensureLayout(){
 const hexA=(hex,a)=>{const n=parseInt((hex||'#000000').slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${(a??100)/100})`;};
 function place(el,w){el.style.left=w.x+'%';el.style.top=w.y+'%';el.style.width=w.w+'%';el.style.height=w.h+'%';}
 function applyOverlays(){
+  document.documentElement.style.setProperty('--band',S.topBand?'env(safe-area-inset-top, 0px)':'0px');
   ensureLayout();
   const box=$('#widgets');
   box.classList.toggle('off',!playing||sleeping||blackout);
@@ -674,7 +681,7 @@ document.addEventListener('pointerup',e=>{
 
 /* ---------- layout editor ---------- */
 let selW=null;const frame=$('#frame');
-function frameAR(){frame.style.setProperty('--ar',`${window.innerWidth}/${window.innerHeight}`);}
+function frameAR(){const sc=$('#screen');frame.style.setProperty('--ar',`${sc.clientWidth||window.innerWidth}/${sc.clientHeight||window.innerHeight}`);}
 window.addEventListener('resize',()=>{frameAR();});
 // レイヤー一覧：上が手前。重なって選べない枠もここから選択・並べ替え・一時非表示できる
 function wLabel(w){return w.type==='text'?'テキスト：'+((w.text||'').split('\n')[0].slice(0,12)||'（空）'):w.type==='image'?'画像・ロゴ'+(urls[w.mediaId]?'':'（未設定）'):WNAME[w.type];}
@@ -952,7 +959,7 @@ function editItem(it,isNew){
 
 /* ---------- admin: settings ---------- */
 const bind=[['#sTrans','trans'],['#sTransMs','transMs',1],['#sDur','dur',1],['#sFit','fit'],['#sShuffle','shuffle',1],['#sProg','progress',1],['#sTickText','tickText'],['#sTickDur','tickDur',1],['#sTickMode','tickMode'],['#sTickBg','tickBg'],['#sTickFg','tickFg'],
-  ['#kAuto','autostart',1],['#kReload','reload'],['#kHours','hours',1],['#kOn','on'],['#kOff','off'],['#kPin','pin'],['#kCursor','cursor',1],['#kWake','wake',1],['#kTouch','touch',1]];
+  ['#kAuto','autostart',1],['#kReload','reload'],['#kHours','hours',1],['#kOn','on'],['#kOff','off'],['#kPin','pin'],['#kCursor','cursor',1],['#kWake','wake',1],['#kTouch','touch',1],['#kBand','topBand',1]];
 function renderSettings(){bind.forEach(([sel,k])=>{$(sel).value=S[k];});}
 bind.forEach(([sel,k,num])=>{const el=$(sel);el.addEventListener(el.tagName==='SELECT'||el.type==='color'||el.type==='time'?'change':'input',()=>{
   let v=el.value;if(num){v=Number(v);if(!isFinite(v))return;if(k==='dur'&&v<1)return;if(k==='tickDur'&&v<5)return;}
