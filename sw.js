@@ -1,7 +1,7 @@
 // Kiosk Signage Player – Service Worker
 // アプリ本体をキャッシュし、オフラインでも起動できるようにする。
 // index.html を更新したら CACHE の番号を上げると、端末側で新しい版に入れ替わる。
-const CACHE = 'kiosk-signage-v1.10.2';
+const CACHE = 'kiosk-signage-v1.9.4';
 const SHELL = [
   './',
   './index.html',

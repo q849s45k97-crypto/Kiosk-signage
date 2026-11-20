@@ -255,16 +255,9 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
         <label>シャッフル再生</label><select id="sShuffle"><option value="0">オフ</option><option value="1">オン</option></select>
         <label>進行バー</label><select id="sProg"><option value="0">非表示</option><option value="1">表示</option></select>
 
-        <div class="sec">VOLUME</div>
-        <label>動画の音量をそろえる</label><select id="sNorm"><option value="1">オン（動画ごとの差を自動で補正）</option><option value="0">オフ</option></select>
-        <label>基準の音量</label><select id="sNormT"><option value="-24">小さめ</option><option value="-20">標準</option><option value="-16">大きめ</option></select>
-        <label>全体の音量</label><div class="row" style="align-items:center"><input type="range" id="sVol" min="0" max="100" step="5" style="flex:1"><span id="sVolV" style="width:46px;text-align:right">100%</span></div>
-        <div></div><div style="font-size:12px;color:var(--mut)">動画を追加すると音の大きさを自動で解析します。動画ごとの微調整は各動画の「編集」で行えます。<br><button class="sm" id="sAnalyze" type="button" style="margin-top:6px">未解析の動画を解析する</button> <span id="sAnaInfo"></span></div>
-
         <div class="sec">TICKER</div>
         <div></div><div style="font-size:12px;color:var(--mut)">時計・テロップの表示／位置は「レイアウト」タブで設定します。</div>
         <label>テロップ文</label><input type="text" id="sTickText">
-        <label>動かし方</label><select id="sTickEng"><option value="gpu">標準</option><option value="raf">互換モード（カクつくときに試す）</option></select>
         <label>流し方</label><select id="sTickMode"><option value="once">流れきってから繰り返す</option><option value="loop">続けて流す（切れ目なし）</option></select>
         <label>速さ（画面を横切る秒数）</label><input type="number" id="sTickDur" min="5" max="300">
         <label>色（背景 / 文字）</label><div class="row"><input type="color" id="sTickBg"><input type="color" id="sTickFg"></div>
@@ -331,7 +324,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 (()=>{
 "use strict";
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION='1.10.2';
+const APP_VERSION='1.9.4';
 const isIOS=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const DAYS=['日','月','火','水','木','金','土'];
@@ -387,7 +380,7 @@ const blobDel=k=>SERVER?api('/api/media/'+k,{method:'DELETE'}).catch(()=>{}):db?
 
 /* ---------- state ---------- */
 const DEFAULT_SETTINGS={trans:'fade',transMs:900,dur:8,fit:'contain',shuffle:0,progress:1,layout:null,
-  tickText:'ようこそ ｜ 本日の営業時間 10:00〜20:00 ｜ 管理画面は左上を3回タップ',tickDur:14,tickMode:'once',tickEngine:'gpu',norm:1,normTarget:-20,vol:100,tickBg:'#111418',tickFg:'#ffffff',
+  tickText:'ようこそ ｜ 本日の営業時間 10:00〜20:00 ｜ 管理画面は左上を3回タップ',tickDur:14,tickMode:'once',tickBg:'#111418',tickFg:'#ffffff',
   autostart:0,reload:'',hours:0,on:'09:00',off:'21:00',pin:'',cursor:1,wake:1,touch:2,topBand:1};
 let S={...DEFAULT_SETTINGS};
 let items=[];             // {id,type:'image'|'video'|'text'|'url',name,dur,enabled,days:[0..6],start,end, mediaId, title,body,tag,bg,fg,align, url}
@@ -428,7 +421,7 @@ function nextItem(dir=1){
 function makeLayer(it){
   const L=document.createElement('div');L.className='layer t-'+S.trans;L.style.transitionDuration=S.transMs+'ms';L.style.setProperty('--fit',S.fit);
   if(it.type==='image'){const im=new Image();im.src=urls[it.mediaId];im.alt='';im.draggable=false;L.appendChild(im);}
-  else if(it.type==='video'){const v=takeVideo();applyVolume(v,it);v.muted=!it.sound;if(it.sound)v.removeAttribute('muted');else v.setAttribute('muted','');v.src=urls[it.mediaId];L.appendChild(v);}
+  else if(it.type==='video'){const v=takeVideo();v.muted=!it.sound;if(it.sound)v.removeAttribute('muted');else v.setAttribute('muted','');v.src=urls[it.mediaId];L.appendChild(v);}
   else if(it.type==='text'){const d=document.createElement('div');d.className='txt'+(it.align==='center'?' center':'');d.style.background=it.bg||'#000';d.style.color=it.fg||'#fff';
     if(it.tag){const t=document.createElement('div');t.className='tag';t.textContent=it.tag;d.appendChild(t);}
     const h=document.createElement('h1');h.textContent=it.title||'';d.appendChild(h);
@@ -471,62 +464,7 @@ function schedule(sec){clearTimeout(timer);curDur=sec*1000;remain=curDur;started
 const vpool=[0,1].map(()=>{const v=document.createElement('video');v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.playsInline=true;v.disablePictureInPicture=true;v.preload='auto';v._tk=0;return v;});
 let vpi=0,audioOK=0;
 function takeVideo(){const v=vpool[vpi];vpi^=1;v.pause();v.onloadeddata=v.onerror=v.onended=null;v._tk++;return v;}
-/* ---------- 音量（Web Audio で動画ごとに増減。iPad は video.volume を変更できないため） ---------- */
-const AC=window.AudioContext||window.webkitAudioContext;let actx=null;
-function setupAudio(){
-  if(actx||!AC)return;
-  try{actx=new AC();
-    const lim=actx.createDynamicsCompressor();      // 音割れ防止のリミッター
-    lim.threshold.value=-2;lim.knee.value=0;lim.ratio.value=20;lim.attack.value=0.003;lim.release.value=0.25;lim.connect(actx.destination);
-    vpool.forEach(v=>{const src=actx.createMediaElementSource(v),g=actx.createGain();src.connect(g);g.connect(lim);v._gain=g;});
-    log('音量調整を有効にしました');
-  }catch(e){log('音量調整を使えません: '+e.message);actx=null;}
-}
-function audioResume(){if(actx&&actx.state!=='running')actx.resume().catch(()=>{});}
-function volGain(it){
-  let g=(S.vol??100)/100*((it.vol??100)/100);
-  if(S.norm&&it.loud&&!it.loud.none&&isFinite(it.loud.db)){
-    let k=Math.pow(10,((S.normTarget??-20)-it.loud.db)/20);
-    k=Math.min(k,8,2/Math.max(it.loud.peak||1e-3,1e-3));    // 最大 +18dB、ピークの2倍まで（超えた分はリミッターで抑える）
-    g*=Math.max(k,0.05);
-  }
-  return g;
-}
-function applyVolume(v,it){const g=volGain(it);if(v._gain){v._gain.gain.value=g;v.volume=1;}else v.volume=Math.max(0,Math.min(1,g));}
-// 音の大きさの解析（無音部分を除いた平均のおおよその大きさ dBFS とピーク）
-let dctx=null;
-async function analyzeLoudness(blob){
-  if(!blob||blob.size>400*1024*1024)return null;
-  const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;if(!OAC)return null;
-  if(!dctx)dctx=new OAC(1,44100,44100);
-  const buf=await blob.arrayBuffer();
-  let ab;try{ab=await new Promise((res,rej)=>{const p=dctx.decodeAudioData(buf,res,rej);if(p&&p.then)p.then(res,rej);});}catch(e){return {none:true};}
-  const n=ab.length,ch=ab.numberOfChannels,bl=Math.max(1,Math.round(ab.sampleRate*0.4));const blocks=[];let peak=0;
-  const data=[];for(let c=0;c<ch;c++)data.push(ab.getChannelData(c));
-  let t0=performance.now();
-  for(let i=0;i<n;i+=bl){let ss=0,cnt=0;const e=Math.min(n,i+bl);for(let c=0;c<ch;c++){const d=data[c];for(let j=i;j<e;j+=4){const x=d[j];ss+=x*x;const a=x<0?-x:x;if(a>peak)peak=a;cnt++;}}blocks.push(ss/(cnt||1));
-    if(performance.now()-t0>8){await new Promise(r=>setTimeout(r,16));t0=performance.now();}}   // 少しずつ計算して画面の動きを止めない
-  const db=x=>10*Math.log10(x||1e-12);
-  let keep=blocks.filter(b=>db(b)>-70);if(!keep.length)return {none:true};
-  const m1=keep.reduce((a,b)=>a+b,0)/keep.length;keep=keep.filter(b=>db(b)>db(m1)-10);
-  const m2=keep.reduce((a,b)=>a+b,0)/keep.length;
-  return {db:Math.round(db(m2)*10)/10,peak:Math.round(peak*1000)/1000};
-}
-let anaBusy=false;
-async function analyzePending(manual){
-  if(anaBusy)return;anaBusy=true;let done=0;
-  try{
-    for(const it of items.filter(i=>i.type==='video'&&!i.loud)){
-      if(!manual)for(let w=0;w<60&&playing&&cur&&cur.type==='video';w++)await new Promise(r=>setTimeout(r,2000));   // 動画の再生中は解析を待つ
-      const info=$('#sAnaInfo');if(info)info.textContent=`解析中：${it.name}`;
-      let r=null;try{const b=await blobGet(it.mediaId);r=await analyzeLoudness(b);}catch(e){}
-      if(r){const t=items.find(x=>x.id===it.id);if(t){t.loud=r;done++;save();log(`音量を解析: ${it.name}（${r.none?'音声なし':r.db+' dB'}）`);}}
-    }
-  }finally{anaBusy=false;const info=$('#sAnaInfo');if(info)info.textContent=done?`${done}件を解析しました`:(manual?'未解析の動画はありません':'');if($('#admin').classList.contains('on'))renderItems();}
-}
-const needAudio=()=>items.some(i=>i.type==='video'&&i.sound&&i.enabled);
 function unlockAudio(){
-  if(needAudio())setupAudio();audioResume();
   if(audioOK>=vpool.length)return;
   const src=$('#nosleep').getAttribute('src');
   vpool.forEach(v=>{if(v._ok||v.isConnected)return;const tk=v._tk;v.muted=false;v.src=src;const p=v.play();
@@ -560,7 +498,6 @@ function togglePause(){
   $('#aPause').textContent=paused?'▶︎':'⏸';reportStatus();
 }
 function startPlayback(fs){
-  if(AC&&!actx&&needAudio()){try{const t=new AC();const ok=t.state==='running';t.close&&t.close();if(ok)setupAudio();}catch(e){}}
   $('#boot').style.display='none';playing=true;paused=false;
   if(fs)enterFS();
   requestWake();applyOverlays();
@@ -595,9 +532,8 @@ function ensureLayout(){
 }
 const hexA=(hex,a)=>{const n=parseInt((hex||'#000000').slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${(a??100)/100})`;};
 function place(el,w){el.style.left=w.x+'%';el.style.top=w.y+'%';el.style.width=w.w+'%';el.style.height=w.h+'%';}
-let lastBand=null;
 function applyOverlays(){
-  const band=S.topBand?'env(safe-area-inset-top, 0px)':'0px';if(band!==lastBand){lastBand=band;document.documentElement.style.setProperty('--band',band);}
+  document.documentElement.style.setProperty('--band',S.topBand?'env(safe-area-inset-top, 0px)':'0px');
   ensureLayout();
   const box=$('#widgets');
   box.classList.toggle('off',!playing||sleeping||blackout);
@@ -616,7 +552,7 @@ function applyOverlays(){
     place(el,w);el.style.zIndex=i+1;el.classList.toggle('hid',hide.includes(w.type));
     if(w.type==='clock'){el.style.color=w.color||'#fff';el.style.background=hexA(w.bg,w.bgA??45);el.style.borderRadius=(w.round??1)?'1.2vmin':'0';}
     if(w.type==='ticker'){el.style.background=S.tickBg;el.style.color=S.tickFg;
-      const key=`${S.tickText}|${S.tickDur}|${S.tickMode}|${S.tickEngine}|${el.clientWidth}x${el.clientHeight}`;if(el._key!==key){el._key=key;startTicker(el);}}
+      const key=`${S.tickText}|${S.tickDur}|${S.tickMode}|${el.clientWidth}x${el.clientHeight}`;if(el._key!==key){el._key=key;startTicker(el);}}
     if(w.type==='text'){const tx=el.firstChild;tx.textContent=w.text||'';el.style.color=w.color;el.style.background=hexA(w.bg,w.bgA??0);tx.style.fontSize=(w.size||10)+'cqh';tx.style.fontWeight=w.bold?'900':'400';
       el.style.justifyContent={left:'flex-start',center:'center',right:'flex-end'}[w.align||'left'];el.style.textAlign=w.align||'left';}
     if(w.type==='image'){const im=el.querySelector('img');const u=urls[w.mediaId]||'';if(im.getAttribute('src')!==u)im.src=u;im.style.objectFit=w.fit||'contain';el.style.background=hexA(w.bg,w.bgA??0);}
@@ -626,18 +562,10 @@ function applyOverlays(){
 }
 // テロップ：文を必要な数だけ並べ、Web Animations API（GPU合成）で途切れなくループさせる
 function startTicker(el){
-  const trk=el.querySelector('.trk');if(el._anim){el._anim.cancel();el._anim=null;}if(el._raf){cancelAnimationFrame(el._raf);el._raf=0;}trk.style.transform='';
+  const trk=el.querySelector('.trk');if(el._anim){el._anim.cancel();el._anim=null;}
   trk.innerHTML='';const W=el.clientWidth;if(!S.tickText||!W)return;
   const a=document.createElement('span');a.textContent=S.tickText;trk.appendChild(a);
   const speed=W/Math.max(5,S.tickDur);            // px/秒：設定秒数で画面を横切る速さ
-  if(S.tickEngine==='raf'){                        // 互換モード：毎フレーム位置を計算して動かす
-    const once=S.tickMode==='once';if(once)a.style.paddingRight='0';const one=a.getBoundingClientRect().width;if(!one)return;
-    if(!once)for(let i=1,n=Math.ceil(W/one)+1;i<n;i++)trk.appendChild(a.cloneNode(true));
-    const period=once?W+one:one,t0=performance.now(),dpr=window.devicePixelRatio||1;
-    const step=t=>{if(!el.isConnected){el._raf=0;return;}const d=((t-t0)/1000*speed)%period;const x=Math.round((once?W-d:-d)*dpr)/dpr;
-      trk.style.transform=`translate3d(${x}px,0,0)`;el._raf=requestAnimationFrame(step);};
-    el._raf=requestAnimationFrame(step);return;
-  }
   if(S.tickMode==='once'){                        // 右端から入り、左端へ流れきってから最初に戻る
     a.style.paddingRight='0';const one=a.getBoundingClientRect().width;if(!one)return;
     el._anim=trk.animate([{transform:`translate3d(${W}px,0,0)`},{transform:`translate3d(${-one}px,0,0)`}],
@@ -659,7 +587,7 @@ let wake=null;
 let nosleepOn=false;
 function nosleep(){if(!S.wake)return;const v=$('#nosleep');if(!v)return;const p=v.play();if(p&&p.then)p.then(()=>{nosleepOn=true;}).catch(()=>{nosleepOn=false;});}
 async function requestWake(){if(!S.wake)return;nosleep();if(!('wakeLock' in navigator))return;try{wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>{wake=null;});}catch(e){log('Wake Lock 不可（代替の方式で継続）: '+e.message);}}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&playing){audioResume();if(!wake)requestWake();nosleep();const v=stage.querySelector('.layer.show video');if(v&&!paused)v.play().catch(()=>{});}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&playing){if(!wake)requestWake();nosleep();const v=stage.querySelector('.layer.show video');if(v&&!paused)v.play().catch(()=>{});}});
 // iOS: any touch is a user gesture – use it to (re)start the keep-awake video if it stopped
 document.addEventListener('touchend',()=>{if(playing&&S.wake&&$('#nosleep').paused)nosleep();},{passive:true});
 // block pinch / double-tap zoom on iPad
@@ -730,7 +658,6 @@ async function syncFromServer(){
     else cur=n;
   }
   reportStatus();
-  if(!EDITOR)setTimeout(()=>analyzePending(),1000);
 }
 function connectEvents(){
   let opened=false;const es=new EventSource('/api/events');
@@ -963,7 +890,7 @@ async function addFiles(files){
     setURL(mid,SERVER?null:(await blobGet(mid)||f));
     items.push({id:uid(),type,name:f.name.replace(/\.[^.]+$/,''),dur:type==='video'?0:S.dur,enabled:true,days:[0,1,2,3,4,5,6],start:'',end:'',mediaId:mid,sound:false});n++;
   }
-  if(n){save();renderItems();toast(`${n}件追加しました`);if(!EDITOR)setTimeout(()=>analyzePending(),500);log(`${n}件のメディアを追加`);if(playing&&!cur&&!sleeping)advance(1);}
+  if(n){save();renderItems();toast(`${n}件追加しました`);log(`${n}件のメディアを追加`);if(playing&&!cur&&!sleeping)advance(1);}
 }
 $('#addFile').onclick=()=>$('#fileIn').click();
 $('#fileIn').onchange=e=>{addFiles([...e.target.files]);e.target.value='';};
@@ -991,9 +918,7 @@ function editItem(it,isNew){
     <label>色（背景 / 文字）</label><div class="row"><input type="color" id="eBg" value="${esc(it.bg)}"><input type="color" id="eFg" value="${esc(it.fg)}"></div>
     <label>配置</label><select id="eAlign"><option value="left">左寄せ</option><option value="center" ${it.align==='center'?'selected':''}>中央</option></select>`;
   if(it.type==='url')extra=`<label>URL</label><input type="url" id="eUrl" value="${esc(it.url)}"><div></div><div style="font-size:12px;color:var(--mut)">表示先サイトが埋め込み（iframe）を許可している必要があります。</div>`;
-  if(it.type==='video')extra=`<label>音声</label><select id="eSound"><option value="0">ミュート</option><option value="1" ${it.sound?'selected':''}>音を出す</option></select>
-    <label>この動画の音量</label><div class="row" style="align-items:center"><input type="range" id="eVol" min="0" max="200" step="5" value="${it.vol??100}" style="flex:1"><span id="eVolV" style="width:46px;text-align:right">${it.vol??100}%</span></div>
-    <div></div><div style="font-size:12px;color:var(--mut)">${!it.loud?'音の大きさは未解析です（保存後に自動で解析します）':it.loud.none?'この動画には音声がありません':`解析結果：平均 ${it.loud.db} dB → 自動補正 ${(()=>{const k=20*Math.log10(volGain({...it,vol:100})/((S.vol??100)/100||1));return (k>=0?'+':'')+k.toFixed(1);})()} dB`}　<button class="sm" type="button" id="eReana">再解析</button></div>`;
+  if(it.type==='video')extra=`<label>音声</label><select id="eSound"><option value="0">ミュート</option><option value="1" ${it.sound?'selected':''}>音を出す</option></select>`;
   m.innerHTML=`<h3>${isNew?'項目を追加':'項目を編集'}</h3><div class="form">
     <label>名前</label><input type="text" id="eName" value="${esc(it.name)}">
     ${extra}
@@ -1009,8 +934,6 @@ function editItem(it,isNew){
   </div><footer><button id="eCancel">キャンセル</button><button class="pri" id="eOk">保存</button></footer>`;
   $('#modal').classList.add('on');
   $('#eCancel').onclick=closeModal;
-  if($('#eVol'))$('#eVol').oninput=e=>{$('#eVolV').textContent=e.target.value+'%';};
-  if($('#eReana'))$('#eReana').onclick=()=>{const t=items.find(x=>x.id===it.id);if(t){delete t.loud;save();}closeModal();analyzePending(true);toast('解析を始めました');};
   m.querySelectorAll('[data-clr]').forEach(b=>b.onclick=()=>{$('#'+b.dataset.clr).value='';});
   $('#eOk').onclick=()=>{
     {const f=$('#eFrom').value,u=$('#eUntil').value;if(f&&u&&dt(f)>=dt(u)){toast('終了日時は開始日時より後にしてください');return;}
@@ -1026,7 +949,7 @@ function editItem(it,isNew){
     it.start=$('#eStart').value;it.end=$('#eEnd').value;
     if(it.type==='text'){it.tag=$('#eTag').value;it.title=$('#eTitle').value;it.body=$('#eBody').value;it.bg=$('#eBg').value;it.fg=$('#eFg').value;it.align=$('#eAlign').value;}
     if(it.type==='url'){const u=$('#eUrl').value.trim();if(!/^https?:\/\//.test(u)){toast('http(s):// から始まるURLを入力してください');return;}it.url=u;}
-    if(it.type==='video'){it.sound=$('#eSound').value==='1';it.vol=+$('#eVol').value;if(!it.loud&&!EDITOR)setTimeout(()=>analyzePending(),300);}
+    if(it.type==='video')it.sound=$('#eSound').value==='1';
     if(isNew)items.push(it);
     save();closeModal();renderItems();
     if(playing&&cur&&cur.id===it.id)show(it);
@@ -1035,22 +958,18 @@ function editItem(it,isNew){
 }
 
 /* ---------- admin: settings ---------- */
-const bind=[['#sTrans','trans'],['#sTransMs','transMs',1],['#sDur','dur',1],['#sFit','fit'],['#sShuffle','shuffle',1],['#sProg','progress',1],['#sTickText','tickText'],['#sTickDur','tickDur',1],['#sTickMode','tickMode'],['#sTickEng','tickEngine'],['#sNorm','norm',1],['#sNormT','normTarget',1],['#sVol','vol',1],['#sTickBg','tickBg'],['#sTickFg','tickFg'],
+const bind=[['#sTrans','trans'],['#sTransMs','transMs',1],['#sDur','dur',1],['#sFit','fit'],['#sShuffle','shuffle',1],['#sProg','progress',1],['#sTickText','tickText'],['#sTickDur','tickDur',1],['#sTickMode','tickMode'],['#sTickBg','tickBg'],['#sTickFg','tickFg'],
   ['#kAuto','autostart',1],['#kReload','reload'],['#kHours','hours',1],['#kOn','on'],['#kOff','off'],['#kPin','pin'],['#kCursor','cursor',1],['#kWake','wake',1],['#kTouch','touch',1],['#kBand','topBand',1]];
-function renderSettings(){bind.forEach(([sel,k])=>{$(sel).value=S[k];});if($('#sVolV'))$('#sVolV').textContent=(S.vol??100)+'%';}
+function renderSettings(){bind.forEach(([sel,k])=>{$(sel).value=S[k];});}
 bind.forEach(([sel,k,num])=>{const el=$(sel);el.addEventListener(el.tagName==='SELECT'||el.type==='color'||el.type==='time'?'change':'input',()=>{
   let v=el.value;if(num){v=Number(v);if(!isFinite(v))return;if(k==='dur'&&v<1)return;if(k==='tickDur'&&v<5)return;}
   S[k]=v;save();applyOverlays();
-  if(k==='vol'&&$('#sVolV'))$('#sVolV').textContent=v+'%';
-  if(k==='norm'||k==='normTarget'||k==='vol'){const cv=stage.querySelector('.layer.show video');if(cv&&cur)applyVolume(cv,cur);}
   if(k==='hours'||k==='on'||k==='off'){if(playing){if(inHours()&&sleeping){sleeping=false;applyOverlays();advance(1);}}}
   if(k==='wake'&&v)requestWake();
 });});
 
 /* ---------- admin: data ---------- */
-function measureFPS(){return new Promise(res=>{let n=0,t0=0;const f=t=>{if(!t0)t0=t;n++;if(t-t0<1000)requestAnimationFrame(f);else res(Math.round((n-1)*1000/(t-t0)));};requestAnimationFrame(f);});}
 function renderStats(){
-  measureFPS().then(f=>{const d=document.createElement('div');d.innerHTML=`<b style="color:${f<50?'#f2c14e':'inherit'}">${f}</b><span>画面の更新（回/秒）${f<50?'<br>少ないとテロップがカクつきます':''}</span>`;$('#stats').prepend(d);});
   const act=items.filter(i=>isActive(i)).length;
   const loop=items.filter(i=>isActive(i)).reduce((a,i)=>a+(i.dur||S.dur),0);
   const st=[[items.length,'登録項目'],[act,'現在の再生対象'],[loop+'秒','1周の目安'],[inHours()?'営業中':'時間外','営業時間'],[db?'IndexedDB':'メモリのみ','保存先'],[wake?'有効':'無効','スリープ防止']];
@@ -1118,7 +1037,6 @@ $('#pIn').onchange=async e=>{
     });
   }catch(err){toast('読み込み失敗: '+err.message,4000);}
 };
-$('#sAnalyze').onclick=()=>analyzePending(true);
 $('#dReload').onclick=()=>location.reload();
 $('#dDemo').onclick=()=>{items.push(...demoItems());save();renderItems();toast('デモ項目を追加しました');};
 $('#dReset').onclick=()=>confirmModal('すべての項目・メディア・設定を削除しますか？',async()=>{
@@ -1154,7 +1072,6 @@ $('#bAdmin').onclick=()=>openAdmin();
     if(EDITOR){$('#aClose').textContent='この端末でプレビュー';$('#bStart').textContent='▶ この端末でプレビュー';openAdmin();}
     else{setTimeout(()=>{if($('#boot').style.display!=='none')startPlayback(false);if(u[0])setTimeout(()=>toast('スマホで操作：'+u[0],8000),2500);},4000);}
     setInterval(reportStatus,5000);
-    if(!EDITOR)setTimeout(()=>analyzePending(),6000);
     return;
   }
   await openDB();
@@ -1166,7 +1083,6 @@ $('#bAdmin').onclick=()=>openAdmin();
   if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
   applyOverlays();
   log(`起動（項目 ${items.length} 件 / 保存先 ${db?'IndexedDB':'メモリ'}）`);
-  setTimeout(()=>analyzePending(),6000);
   if(S.autostart){$('#autostartNote').textContent='自動再生がオンのため、まもなく開始します…';setTimeout(()=>{if($('#boot').style.display!=='none')startPlayback(false);},2500);}
 })();
 })();
