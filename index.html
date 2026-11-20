@@ -264,6 +264,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
         <div class="sec">TICKER</div>
         <div></div><div style="font-size:12px;color:var(--mut)">時計・テロップの表示／位置は「レイアウト」タブで設定します。</div>
         <label>テロップ文</label><input type="text" id="sTickText">
+        <label>動かし方</label><select id="sTickEng"><option value="gpu">標準</option><option value="raf">互換モード（カクつくときに試す）</option></select>
         <label>流し方</label><select id="sTickMode"><option value="once">流れきってから繰り返す</option><option value="loop">続けて流す（切れ目なし）</option></select>
         <label>速さ（画面を横切る秒数）</label><input type="number" id="sTickDur" min="5" max="300">
         <label>色（背景 / 文字）</label><div class="row"><input type="color" id="sTickBg"><input type="color" id="sTickFg"></div>
@@ -330,7 +331,7 @@ pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:10px;paddi
 (()=>{
 "use strict";
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION='1.10.1';
+const APP_VERSION='1.10.2';
 const isIOS=/iP(ad|hone|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const DAYS=['日','月','火','水','木','金','土'];
@@ -386,7 +387,7 @@ const blobDel=k=>SERVER?api('/api/media/'+k,{method:'DELETE'}).catch(()=>{}):db?
 
 /* ---------- state ---------- */
 const DEFAULT_SETTINGS={trans:'fade',transMs:900,dur:8,fit:'contain',shuffle:0,progress:1,layout:null,
-  tickText:'ようこそ ｜ 本日の営業時間 10:00〜20:00 ｜ 管理画面は左上を3回タップ',tickDur:14,tickMode:'once',norm:1,normTarget:-20,vol:100,tickBg:'#111418',tickFg:'#ffffff',
+  tickText:'ようこそ ｜ 本日の営業時間 10:00〜20:00 ｜ 管理画面は左上を3回タップ',tickDur:14,tickMode:'once',tickEngine:'gpu',norm:1,normTarget:-20,vol:100,tickBg:'#111418',tickFg:'#ffffff',
   autostart:0,reload:'',hours:0,on:'09:00',off:'21:00',pin:'',cursor:1,wake:1,touch:2,topBand:1};
 let S={...DEFAULT_SETTINGS};
 let items=[];             // {id,type:'image'|'video'|'text'|'url',name,dur,enabled,days:[0..6],start,end, mediaId, title,body,tag,bg,fg,align, url}
@@ -615,7 +616,7 @@ function applyOverlays(){
     place(el,w);el.style.zIndex=i+1;el.classList.toggle('hid',hide.includes(w.type));
     if(w.type==='clock'){el.style.color=w.color||'#fff';el.style.background=hexA(w.bg,w.bgA??45);el.style.borderRadius=(w.round??1)?'1.2vmin':'0';}
     if(w.type==='ticker'){el.style.background=S.tickBg;el.style.color=S.tickFg;
-      const key=`${S.tickText}|${S.tickDur}|${S.tickMode}|${el.clientWidth}x${el.clientHeight}`;if(el._key!==key){el._key=key;startTicker(el);}}
+      const key=`${S.tickText}|${S.tickDur}|${S.tickMode}|${S.tickEngine}|${el.clientWidth}x${el.clientHeight}`;if(el._key!==key){el._key=key;startTicker(el);}}
     if(w.type==='text'){const tx=el.firstChild;tx.textContent=w.text||'';el.style.color=w.color;el.style.background=hexA(w.bg,w.bgA??0);tx.style.fontSize=(w.size||10)+'cqh';tx.style.fontWeight=w.bold?'900':'400';
       el.style.justifyContent={left:'flex-start',center:'center',right:'flex-end'}[w.align||'left'];el.style.textAlign=w.align||'left';}
     if(w.type==='image'){const im=el.querySelector('img');const u=urls[w.mediaId]||'';if(im.getAttribute('src')!==u)im.src=u;im.style.objectFit=w.fit||'contain';el.style.background=hexA(w.bg,w.bgA??0);}
@@ -625,10 +626,18 @@ function applyOverlays(){
 }
 // テロップ：文を必要な数だけ並べ、Web Animations API（GPU合成）で途切れなくループさせる
 function startTicker(el){
-  const trk=el.querySelector('.trk');if(el._anim){el._anim.cancel();el._anim=null;}
+  const trk=el.querySelector('.trk');if(el._anim){el._anim.cancel();el._anim=null;}if(el._raf){cancelAnimationFrame(el._raf);el._raf=0;}trk.style.transform='';
   trk.innerHTML='';const W=el.clientWidth;if(!S.tickText||!W)return;
   const a=document.createElement('span');a.textContent=S.tickText;trk.appendChild(a);
   const speed=W/Math.max(5,S.tickDur);            // px/秒：設定秒数で画面を横切る速さ
+  if(S.tickEngine==='raf'){                        // 互換モード：毎フレーム位置を計算して動かす
+    const once=S.tickMode==='once';if(once)a.style.paddingRight='0';const one=a.getBoundingClientRect().width;if(!one)return;
+    if(!once)for(let i=1,n=Math.ceil(W/one)+1;i<n;i++)trk.appendChild(a.cloneNode(true));
+    const period=once?W+one:one,t0=performance.now(),dpr=window.devicePixelRatio||1;
+    const step=t=>{if(!el.isConnected){el._raf=0;return;}const d=((t-t0)/1000*speed)%period;const x=Math.round((once?W-d:-d)*dpr)/dpr;
+      trk.style.transform=`translate3d(${x}px,0,0)`;el._raf=requestAnimationFrame(step);};
+    el._raf=requestAnimationFrame(step);return;
+  }
   if(S.tickMode==='once'){                        // 右端から入り、左端へ流れきってから最初に戻る
     a.style.paddingRight='0';const one=a.getBoundingClientRect().width;if(!one)return;
     el._anim=trk.animate([{transform:`translate3d(${W}px,0,0)`},{transform:`translate3d(${-one}px,0,0)`}],
@@ -1026,7 +1035,7 @@ function editItem(it,isNew){
 }
 
 /* ---------- admin: settings ---------- */
-const bind=[['#sTrans','trans'],['#sTransMs','transMs',1],['#sDur','dur',1],['#sFit','fit'],['#sShuffle','shuffle',1],['#sProg','progress',1],['#sTickText','tickText'],['#sTickDur','tickDur',1],['#sTickMode','tickMode'],['#sNorm','norm',1],['#sNormT','normTarget',1],['#sVol','vol',1],['#sTickBg','tickBg'],['#sTickFg','tickFg'],
+const bind=[['#sTrans','trans'],['#sTransMs','transMs',1],['#sDur','dur',1],['#sFit','fit'],['#sShuffle','shuffle',1],['#sProg','progress',1],['#sTickText','tickText'],['#sTickDur','tickDur',1],['#sTickMode','tickMode'],['#sTickEng','tickEngine'],['#sNorm','norm',1],['#sNormT','normTarget',1],['#sVol','vol',1],['#sTickBg','tickBg'],['#sTickFg','tickFg'],
   ['#kAuto','autostart',1],['#kReload','reload'],['#kHours','hours',1],['#kOn','on'],['#kOff','off'],['#kPin','pin'],['#kCursor','cursor',1],['#kWake','wake',1],['#kTouch','touch',1],['#kBand','topBand',1]];
 function renderSettings(){bind.forEach(([sel,k])=>{$(sel).value=S[k];});if($('#sVolV'))$('#sVolV').textContent=(S.vol??100)+'%';}
 bind.forEach(([sel,k,num])=>{const el=$(sel);el.addEventListener(el.tagName==='SELECT'||el.type==='color'||el.type==='time'?'change':'input',()=>{
@@ -1039,7 +1048,9 @@ bind.forEach(([sel,k,num])=>{const el=$(sel);el.addEventListener(el.tagName==='S
 });});
 
 /* ---------- admin: data ---------- */
+function measureFPS(){return new Promise(res=>{let n=0,t0=0;const f=t=>{if(!t0)t0=t;n++;if(t-t0<1000)requestAnimationFrame(f);else res(Math.round((n-1)*1000/(t-t0)));};requestAnimationFrame(f);});}
 function renderStats(){
+  measureFPS().then(f=>{const d=document.createElement('div');d.innerHTML=`<b style="color:${f<50?'#f2c14e':'inherit'}">${f}</b><span>画面の更新（回/秒）${f<50?'<br>少ないとテロップがカクつきます':''}</span>`;$('#stats').prepend(d);});
   const act=items.filter(i=>isActive(i)).length;
   const loop=items.filter(i=>isActive(i)).reduce((a,i)=>a+(i.dur||S.dur),0);
   const st=[[items.length,'登録項目'],[act,'現在の再生対象'],[loop+'秒','1周の目安'],[inHours()?'営業中':'時間外','営業時間'],[db?'IndexedDB':'メモリのみ','保存先'],[wake?'有効':'無効','スリープ防止']];
